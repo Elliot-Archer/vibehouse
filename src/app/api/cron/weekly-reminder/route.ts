@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
       if (!task) return Promise.reject(new Error('Task not found'))
 
       return sendPushToUser(serviceSupabase, entry.user_id, {
-        title: 'Vibehouse',
+        title: 'Tjokkellust',
         body: `Vergeet je taak niet: ${task.name}`,
         url: '/schema',
       })

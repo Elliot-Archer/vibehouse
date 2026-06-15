@@ -147,8 +147,8 @@ export default async function SchemaPage({ searchParams }: PageProps) {
       {/* Header */}
       <header className="bg-gradient-to-r from-secondary-900 to-secondary-800 px-4 pt-12 pb-6 sticky top-0 z-10 shadow-lg">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-secondary-700 rounded-xl flex items-center justify-center shadow-md p-1.5 border border-primary-400">
-            <img src="/logo.png" alt="Vibehouse" className="w-full h-full object-contain" />
+          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-md p-1.5">
+            <img src="/logo.png" alt="Tjokkellust" className="w-full h-full object-contain" />
           </div>
           <div className="flex-1">
             <h1 className="text-xl font-bold text-white">Schema</h1>

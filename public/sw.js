@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vibehouse-v1'
+const CACHE_NAME = 'tjokkellust-v1'
 const APP_SHELL = ['/', '/schema', '/manifest.json']
 
 self.addEventListener('install', (event) => {
@@ -66,13 +66,13 @@ self.addEventListener('fetch', (event) => {
 })
 
 self.addEventListener('push', (event) => {
-  let data = { title: 'Vibehouse', body: 'Je hebt een nieuwe melding.' }
+  let data = { title: 'Tjokkellust', body: 'Je hebt een nieuwe melding.' }
   try {
     data = event.data.json()
   } catch (_) {}
 
   event.waitUntil(
-    self.registration.showNotification(data.title || 'Vibehouse', {
+    self.registration.showNotification(data.title || 'Tjokkellust', {
       body: data.body,
       icon: '/icon-192.png',
       badge: '/icon-192.png',

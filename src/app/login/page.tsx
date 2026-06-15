@@ -43,10 +43,10 @@ export default function LoginPage() {
     <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-gradient-to-br from-secondary-900 via-secondary-800 to-secondary-900">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="w-24 h-24 bg-secondary-800 rounded-3xl mx-auto mb-6 flex items-center justify-center shadow-xl p-3 border-2 border-primary-400">
-            <img src="/logo.png" alt="Vibehouse" className="w-full h-full object-contain" />
+          <div className="w-24 h-24 bg-white rounded-3xl mx-auto mb-6 flex items-center justify-center shadow-xl p-3">
+            <img src="/logo.png" alt="Tjokkellust" className="w-full h-full object-contain" />
           </div>
-          <h1 className="text-3xl font-bold text-white">Vibehouse</h1>
+          <h1 className="text-3xl font-bold text-white">Tjokkellust</h1>
           <p className="text-primary-300 mt-2 text-sm font-medium">Schoonmaakrooster</p>
         </div>
 

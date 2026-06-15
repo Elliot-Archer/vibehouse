@@ -5,13 +5,13 @@ import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { LogoutButton } from './LogoutButton'
 
 export const metadata: Metadata = {
-  title: 'Vibehouse',
+  title: 'Tjokkellust',
   description: 'Schoonmaakrooster voor je studentenhuis',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Vibehouse',
+    title: 'Tjokkellust',
   },
 }
 

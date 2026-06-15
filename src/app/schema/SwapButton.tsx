@@ -22,13 +22,24 @@ export default function SwapButton({
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [cancelLoading, setCancelLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [toast, setToast] = useState('')
 
-  async function handleRequest(targetId: string) {
+  function showToast(msg: string) {
+    setToast(msg)
+    setTimeout(() => setToast(''), 3000)
+  }
+
+  async function handleRequest(targetId: string, targetName: string) {
     setLoading(true)
+    setError('')
     const result = await requestSwapAction(entryId, targetId)
 
-    if (!result.error) {
+    if (result.error) {
+      setError(result.error)
+    } else {
       setOpen(false)
+      showToast(`✓ Ruilverzoek verstuurd naar ${targetName}!`)
       router.refresh()
     }
     setLoading(false)
@@ -56,6 +67,12 @@ export default function SwapButton({
 
   return (
     <>
+      {toast && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] bg-secondary-800 text-white text-sm font-medium px-5 py-3 rounded-full shadow-xl animate-fade-in">
+          {toast}
+        </div>
+      )}
+
       <button
         onClick={() => setOpen(true)}
         className="btn-ghost text-xs px-3 py-1"
@@ -76,23 +93,31 @@ export default function SwapButton({
             <p className="text-sm text-slate-500 mb-4">
               Kies een huisgenoot om mee te ruilen:
             </p>
+
+            {error && (
+              <div className="mb-3 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                <p className="text-red-700 text-sm">{error}</p>
+              </div>
+            )}
+
             <div className="space-y-2">
               {housemates.map((mate) => (
                 <button
                   key={mate.id}
-                  onClick={() => handleRequest(mate.id)}
+                  onClick={() => handleRequest(mate.id, mate.name)}
                   disabled={loading}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:border-primary-300 hover:bg-primary-50 transition-colors text-left disabled:opacity-50"
+                  className="w-full flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:border-secondary-400 hover:bg-secondary-50 transition-colors text-left disabled:opacity-50"
                 >
-                  <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-semibold text-sm flex-shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-secondary-700 font-semibold text-sm flex-shrink-0">
                     {mate.name.charAt(0).toUpperCase()}
                   </div>
                   <span className="text-sm font-medium text-slate-800">
-                    {mate.name}
+                    {loading ? 'Bezig...' : mate.name}
                   </span>
                 </button>
               ))}
             </div>
+
             <button
               onClick={() => setOpen(false)}
               className="mt-4 w-full text-sm text-slate-500 hover:text-slate-700 py-2"

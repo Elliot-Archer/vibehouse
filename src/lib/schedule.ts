@@ -22,7 +22,10 @@ export function getMonday(date: Date): Date {
 }
 
 export function formatWeekDate(monday: Date): string {
-  return monday.toISOString().split('T')[0]
+  const y = monday.getFullYear()
+  const m = String(monday.getMonth() + 1).padStart(2, '0')
+  const d = String(monday.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
 }
 
 export function getAssignedUserId(

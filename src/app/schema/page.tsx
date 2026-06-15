@@ -37,7 +37,7 @@ export default async function SchemaPage({ searchParams }: PageProps) {
   // Determine which week to show
   let monday: Date
   if (params.week) {
-    const parsed = new Date(params.week + 'T00:00:00Z')
+    const parsed = new Date(params.week + 'T12:00:00')
     monday = isNaN(parsed.getTime()) ? getCurrentMonday() : getMonday(parsed)
   } else {
     monday = getCurrentMonday()
@@ -147,14 +147,13 @@ export default async function SchemaPage({ searchParams }: PageProps) {
       {/* Header */}
       <header className="bg-gradient-to-r from-secondary-900 to-secondary-800 px-4 pt-12 pb-6 sticky top-0 z-10 shadow-lg">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-md p-1.5">
-            <img src="/logo.png" alt="Tjokkellust" className="w-full h-full object-contain" />
-          </div>
+          <img src="/logo.png" alt="Tjokkellust" className="w-14 h-14 object-contain drop-shadow-lg" />
           <div className="flex-1">
-            <h1 className="text-xl font-bold text-white">Schema</h1>
+            <p className="text-primary-400 text-xs font-semibold uppercase tracking-widest">Schema</p>
+            <h1 className="text-2xl font-bold text-white leading-tight">Tjokkellust</h1>
           </div>
           {isCurrentWeek && (
-            <span className="badge bg-primary-500 text-secondary-900 font-bold px-3 py-1 rounded-full text-xs">
+            <span className="badge bg-primary-400 text-secondary-900 font-bold px-3 py-1 rounded-full text-xs">
               Deze week
             </span>
           )}
@@ -221,16 +220,16 @@ export default async function SchemaPage({ searchParams }: PageProps) {
                       {wt.task.name}
                     </span>
                     {wt.isMe && (
-                      <span className="badge bg-primary-500 text-white text-xs">
+                      <span className="badge badge-static bg-primary-400 text-secondary-900 text-xs font-semibold">
                         Jouw taak
                       </span>
                     )}
                     {wt.entry.status === 'done' ? (
-                      <span className="badge bg-green-100 text-green-700">
+                      <span className="badge badge-static bg-green-100 text-green-700">
                         Klaar ✓
                       </span>
                     ) : (
-                      <span className="badge bg-slate-100 text-slate-500">
+                      <span className="badge badge-static bg-slate-100 text-slate-500">
                         Te doen
                       </span>
                     )}

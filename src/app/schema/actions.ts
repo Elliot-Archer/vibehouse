@@ -21,19 +21,29 @@ async function createClient() {
   )
 }
 
+async function getProfile(supabase: Awaited<ReturnType<typeof createClient>>) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+  const { data: profile } = await supabase
+    .from('users')
+    .select('id')
+    .eq('email', user.email)
+    .single()
+  return profile
+}
+
 export async function markDoneAction(entryId: string) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Niet ingelogd' }
+  const profile = await getProfile(supabase)
+  if (!profile) return { error: 'Niet ingelogd' }
 
-  // Verify the entry belongs to this user
   const { data: entry } = await supabase
     .from('schedule_entries')
     .select('user_id')
     .eq('id', entryId)
     .single()
 
-  if (!entry || entry.user_id !== user.id) return { error: 'Geen toegang' }
+  if (!entry || entry.user_id !== profile.id) return { error: 'Geen toegang' }
 
   const { error } = await supabase
     .from('schedule_entries')
@@ -47,21 +57,20 @@ export async function markDoneAction(entryId: string) {
 
 export async function requestSwapAction(entryId: string, targetUserId: string) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Niet ingelogd' }
+  const profile = await getProfile(supabase)
+  if (!profile) return { error: 'Niet ingelogd' }
 
-  // Verify the entry belongs to the requester
   const { data: entry } = await supabase
     .from('schedule_entries')
     .select('user_id')
     .eq('id', entryId)
     .single()
 
-  if (!entry || entry.user_id !== user.id) return { error: 'Geen toegang' }
+  if (!entry || entry.user_id !== profile.id) return { error: 'Geen toegang' }
 
   const { error } = await supabase
     .from('swap_requests')
-    .insert({ requester_id: user.id, target_id: targetUserId, entry_id: entryId, status: 'pending' })
+    .insert({ requester_id: profile.id, target_id: targetUserId, entry_id: entryId, status: 'pending' })
 
   if (error) return { error: error.message }
   revalidatePath('/schema')
@@ -71,8 +80,8 @@ export async function requestSwapAction(entryId: string, targetUserId: string) {
 
 export async function cancelSwapAction(swapId: string) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Niet ingelogd' }
+  const profile = await getProfile(supabase)
+  if (!profile) return { error: 'Niet ingelogd' }
 
   const { data: swap } = await supabase
     .from('swap_requests')
@@ -80,7 +89,7 @@ export async function cancelSwapAction(swapId: string) {
     .eq('id', swapId)
     .single()
 
-  if (!swap || swap.requester_id !== user.id) return { error: 'Geen toegang' }
+  if (!swap || swap.requester_id !== profile.id) return { error: 'Geen toegang' }
 
   const { error } = await supabase.from('swap_requests').delete().eq('id', swapId)
   if (error) return { error: error.message }
@@ -91,8 +100,8 @@ export async function cancelSwapAction(swapId: string) {
 
 export async function respondSwapAction(swapId: string, accept: boolean) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Niet ingelogd' }
+  const profile = await getProfile(supabase)
+  if (!profile) return { error: 'Niet ingelogd' }
 
   const { data: swap } = await supabase
     .from('swap_requests')
@@ -100,14 +109,12 @@ export async function respondSwapAction(swapId: string, accept: boolean) {
     .eq('id', swapId)
     .single()
 
-  // Only the target can respond
-  if (!swap || swap.target_id !== user.id) return { error: 'Geen toegang' }
+  if (!swap || swap.target_id !== profile.id) return { error: 'Geen toegang' }
 
   if (accept) {
-    // Transfer the entry to the accepting user
     const { error: entryError } = await supabase
       .from('schedule_entries')
-      .update({ user_id: user.id })
+      .update({ user_id: profile.id })
       .eq('id', swap.entry_id)
     if (entryError) return { error: entryError.message }
   }

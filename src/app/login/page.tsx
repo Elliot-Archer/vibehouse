@@ -13,22 +13,30 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
 
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    })
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
 
-    const data = await res.json()
+      const data = await res.json()
+      console.log('Login response:', res.status, data)
 
-    if (!res.ok) {
-      setError(data.error ?? 'Inloggen mislukt')
+      if (!res.ok) {
+        setError(data.error ?? 'Inloggen mislukt')
+        setLoading(false)
+        return
+      }
+
+      // Route handler has written session cookies — hard reload so middleware sees them
+      console.log('Login successful, redirecting...')
+      window.location.href = '/schema'
+    } catch (err) {
+      console.error('Login error:', err)
+      setError('Er ging iets mis bij het inloggen')
       setLoading(false)
-      return
     }
-
-    // Route handler has written session cookies — hard reload so middleware sees them
-    window.location.href = '/schema'
   }
 
   return (

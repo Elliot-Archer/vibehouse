@@ -139,8 +139,14 @@ export default async function RuilverzoekPage() {
 
   return (
     <div>
-      <header className="bg-white border-b border-slate-100 px-4 pt-12 pb-4 sticky top-0 z-10">
-        <h1 className="text-xl font-bold text-slate-900">Ruilverzoeken</h1>
+      <header className="bg-gradient-to-r from-secondary-900 to-secondary-800 px-4 pt-12 pb-6 sticky top-0 z-10 shadow-lg">
+        <div className="flex items-center gap-3">
+          <img src="/logo.png" alt="Tjokkellust" className="w-14 h-14 object-contain drop-shadow-lg" />
+          <div>
+            <p className="text-primary-400 text-xs font-semibold uppercase tracking-widest">Ruilen</p>
+            <h1 className="text-2xl font-bold text-white leading-tight">Tjokkellust</h1>
+          </div>
+        </div>
       </header>
 
       <div className="px-4 py-4 space-y-6">

@@ -97,6 +97,11 @@ export default function LoginPage() {
             >
               {loading ? 'Bezig met inloggen...' : 'Inloggen'}
             </button>
+            <div className="text-center mt-4">
+              <a href="/reset-password" className="text-sm text-secondary-700 hover:underline">
+                Wachtwoord vergeten?
+              </a>
+            </div>
           </form>
         </div>
       </div>

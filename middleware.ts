@@ -1,46 +1,42 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
 
-export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request })
+// Hardcoded cookie name for this Supabase project
+const COOKIE_NAME = 'sb-oqmhcbfxewpytmgmokhr-auth-token'
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => request.cookies.getAll(),
-        setAll: (cookiesToSet) => {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({ request })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          )
-        },
-      },
-    }
-  )
+function hasValidSession(request: NextRequest): boolean {
+  const raw = request.cookies.get(COOKIE_NAME)?.value
+  if (!raw) return false
 
-  // Use getUser() — validates JWT server-side, cannot be spoofed by cookie name
-  const { data: { user } } = await supabase.auth.getUser()
+  try {
+    const json = raw.startsWith('base64-')
+      ? atob(raw.slice(7))
+      : decodeURIComponent(raw)
+    const session = JSON.parse(json)
+    return typeof session.expires_at === 'number' && session.expires_at > Date.now() / 1000
+  } catch {
+    return false
+  }
+}
 
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const protectedRoutes = ['/schema', '/ruilverzoeken', '/admin']
   const isProtected = protectedRoutes.some((route) => pathname.startsWith(route))
+  const loggedIn = hasValidSession(request)
 
-  if (!user && isProtected) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    return NextResponse.redirect(url)
+  const response = loggedIn || !isProtected
+    ? NextResponse.next()
+    : NextResponse.redirect(new URL('/login', request.url))
+
+  response.headers.set('x-middleware-ran', '1')
+  response.headers.set('x-logged-in', String(loggedIn))
+  response.headers.set('x-cookie-found', String(!!request.cookies.get(COOKIE_NAME)))
+
+  if (loggedIn && pathname === '/login') {
+    return NextResponse.redirect(new URL('/schema', request.url))
   }
 
-  if (user && pathname === '/login') {
-    const url = request.nextUrl.clone()
-    url.pathname = '/schema'
-    return NextResponse.redirect(url)
-  }
-
-  return supabaseResponse
+  return response
 }
 
 export const config = {

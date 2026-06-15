@@ -1,12 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -19,18 +13,21 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
 
-    const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password })
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    })
 
-    if (authError || !data.session) {
-      setError(authError?.message ?? 'Inloggen mislukt')
+    const data = await res.json()
+
+    if (!res.ok) {
+      setError(data.error ?? 'Inloggen mislukt')
       setLoading(false)
       return
     }
 
-    // Store session manually so middleware can read it
-    document.cookie = `sb-access-token=${data.session.access_token}; path=/; max-age=3600; SameSite=Lax`
-    document.cookie = `sb-refresh-token=${data.session.refresh_token}; path=/; max-age=604800; SameSite=Lax`
-
+    // Route handler has written session cookies — hard reload so middleware sees them
     window.location.href = '/schema'
   }
 

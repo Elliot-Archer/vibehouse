@@ -49,7 +49,7 @@ export default async function RootLayout({
   }
 
   const adminUserId = process.env.ADMIN_USER_ID
-  const isAdmin = profile?.id === adminUserId
+  const isAdmin = user?.id === adminUserId
 
   return (
     <html lang="nl">

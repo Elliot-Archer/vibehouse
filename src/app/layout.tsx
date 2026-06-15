@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import Link from 'next/link'
 import './globals.css'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { LogoutButton } from './LogoutButton'
 
 export const metadata: Metadata = {
   title: 'Vibehouse',
@@ -74,6 +75,7 @@ export default async function RootLayout({
                 {isAdmin && (
                   <NavItem href="/admin" label="Beheer" icon={<AdminIcon />} />
                 )}
+                <LogoutButton />
               </div>
             </nav>
           )}

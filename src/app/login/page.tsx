@@ -32,22 +32,20 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-slate-50">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-gradient-to-br from-secondary-900 via-secondary-800 to-secondary-900">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-primary-500 rounded-2xl mx-auto mb-4 flex items-center justify-center">
-            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-            </svg>
+          <div className="w-24 h-24 bg-white rounded-3xl mx-auto mb-6 flex items-center justify-center shadow-xl p-3">
+            <img src="/logo.png" alt="Vibehouse" className="w-full h-full object-contain" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">Vibehouse</h1>
-          <p className="text-slate-500 mt-1 text-sm">Schoonmaakrooster</p>
+          <h1 className="text-3xl font-bold text-white">Vibehouse</h1>
+          <p className="text-primary-300 mt-2 text-sm font-medium">Schoonmaakrooster</p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+        <div className="bg-white rounded-2xl shadow-2xl border border-white/20 p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1">
+              <label htmlFor="email" className="block text-sm font-medium text-secondary-900 mb-1">
                 E-mailadres
               </label>
               <input
@@ -63,7 +61,7 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-1">
+              <label htmlFor="password" className="block text-sm font-medium text-secondary-900 mb-1">
                 Wachtwoord
               </label>
               <input
@@ -87,7 +85,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-primary-500 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-primary-600 active:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-primary-500 text-secondary-900 rounded-lg py-3 text-sm font-bold hover:bg-primary-400 active:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
             >
               {loading ? 'Bezig met inloggen...' : 'Inloggen'}
             </button>

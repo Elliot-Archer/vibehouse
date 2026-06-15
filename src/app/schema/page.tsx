@@ -145,11 +145,16 @@ export default async function SchemaPage({ searchParams }: PageProps) {
       <PushSubscriber />
 
       {/* Header */}
-      <header className="bg-white border-b border-slate-100 px-4 pt-12 pb-4 sticky top-0 z-10">
-        <div className="flex items-center justify-between mb-3">
-          <h1 className="text-xl font-bold text-slate-900">Schema</h1>
+      <header className="bg-gradient-to-r from-secondary-900 to-secondary-800 px-4 pt-12 pb-6 sticky top-0 z-10 shadow-lg">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-md p-1.5">
+            <img src="/logo.png" alt="Vibehouse" className="w-full h-full object-contain" />
+          </div>
+          <div className="flex-1">
+            <h1 className="text-xl font-bold text-white">Schema</h1>
+          </div>
           {isCurrentWeek && (
-            <span className="badge bg-primary-100 text-primary-700">
+            <span className="badge bg-primary-500 text-secondary-900 font-bold px-3 py-1 rounded-full text-xs">
               Deze week
             </span>
           )}
@@ -157,10 +162,10 @@ export default async function SchemaPage({ searchParams }: PageProps) {
         <div className="flex items-center justify-between">
           <Link
             href={`/schema?week=${formatWeekDate(prevMonday)}`}
-            className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-slate-100 transition-colors"
+            className="flex items-center justify-center w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
           >
             <svg
-              className="w-4 h-4 text-slate-600"
+              className="w-5 h-5 text-white"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -173,13 +178,13 @@ export default async function SchemaPage({ searchParams }: PageProps) {
               />
             </svg>
           </Link>
-          <span className="text-sm font-medium text-slate-700">{weekLabel}</span>
+          <span className="text-sm font-semibold text-white">{weekLabel}</span>
           <Link
             href={`/schema?week=${formatWeekDate(nextMonday)}`}
-            className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-slate-100 transition-colors"
+            className="flex items-center justify-center w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
           >
             <svg
-              className="w-4 h-4 text-slate-600"
+              className="w-5 h-5 text-white"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"

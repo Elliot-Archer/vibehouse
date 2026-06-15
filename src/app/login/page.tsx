@@ -43,9 +43,11 @@ export default function LoginPage() {
     <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-gradient-to-br from-secondary-900 via-secondary-800 to-secondary-900">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <img src="/logo.png" alt="Tjokkellust" className="w-36 h-36 mx-auto mb-4 object-contain drop-shadow-xl" />
+          <div className="w-24 h-24 bg-white rounded-3xl mx-auto mb-6 flex items-center justify-center shadow-xl p-3">
+            <img src="/logo.png" alt="Tjokkellust" className="w-full h-full object-contain" />
+          </div>
           <h1 className="text-3xl font-bold text-white">Tjokkellust</h1>
-          <p className="text-secondary-300 mt-2 text-sm font-medium">Schoonmaakrooster</p>
+          <p className="text-primary-300 mt-2 text-sm font-medium">Schoonmaakrooster</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-2xl border border-white/20 p-6">
@@ -91,7 +93,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-primary-400 text-secondary-900 rounded-lg py-3 text-sm font-bold hover:bg-secondary-600 hover:text-white active:bg-secondary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+              className="w-full bg-primary-500 text-secondary-900 rounded-lg py-3 text-sm font-bold hover:bg-primary-400 active:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
             >
               {loading ? 'Bezig met inloggen...' : 'Inloggen'}
             </button>

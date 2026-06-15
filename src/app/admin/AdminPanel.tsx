@@ -17,8 +17,11 @@ export default function AdminPanel({
   const [users, setUsers] = useState<User[]>(initialUsers)
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
   const [taskMembers, setTaskMembers] = useState<TaskMember[]>(initialTaskMembers)
-  const [activeTab, setActiveTab] = useState<'users' | 'tasks' | 'members' | 'schema'>('users')
+  const [activeTab, setActiveTab] = useState<'users' | 'tasks' | 'members' | 'schema' | 'push'>('users')
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  // Push notification testing
+  const [pushLoading, setPushLoading] = useState(false)
 
   // User management
   const [newUserName, setNewUserName] = useState('')
@@ -185,11 +188,36 @@ export default function AdminPanel({
     }
   }
 
+  async function sendTestNotifications() {
+    if (!confirm('Test notificatie naar alle huisgenoten sturen?')) return
+    setPushLoading(true)
+    try {
+      const promises = users.map(user => 
+        fetch('/api/push/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.id,
+            title: 'Tjokkellust Test 🏠',
+            body: 'Dit is een test notificatie. Als je dit ziet, werken de notificaties!',
+            url: '/schema'
+          })
+        })
+      )
+      await Promise.all(promises)
+      showMessage('success', `Test notificatie verstuurd naar ${users.length} huisgenoot${users.length !== 1 ? 'en' : ''}!`)
+    } catch (err) {
+      showMessage('error', err instanceof Error ? err.message : 'Fout bij versturen')
+    }
+    setPushLoading(false)
+  }
+
   const tabs = [
     { key: 'users', label: 'Huisgenoten' },
     { key: 'tasks', label: 'Taken' },
     { key: 'members', label: 'Taakverdeling' },
     { key: 'schema', label: 'Schema' },
+    { key: 'push', label: 'Notificaties' },
   ] as const
 
   return (
@@ -458,6 +486,46 @@ export default function AdminPanel({
             <button onClick={regenerateSchema} className="btn-primary">
               Schema genereren
             </button>
+          </div>
+        )}
+
+        {/* Push notifications tab */}
+        {activeTab === 'push' && (
+          <div className="space-y-4">
+            <div className="card">
+              <h3 className="font-semibold text-sm text-slate-900 mb-2">
+                Test Notificaties
+              </h3>
+              <p className="text-xs text-slate-500 mb-4">
+                Stuur een test notificatie naar alle huisgenoten om te controleren of
+                push notificaties werken. Huisgenoten moeten eerst toestemming hebben
+                gegeven voor notificaties.
+              </p>
+              <button 
+                onClick={sendTestNotifications} 
+                disabled={pushLoading || users.length === 0}
+                className="btn-primary"
+              >
+                {pushLoading ? 'Versturen...' : `Test notificatie naar ${users.length} huisgenoot${users.length !== 1 ? 'en' : ''}`}
+              </button>
+            </div>
+
+            <div className="card bg-blue-50 border-blue-200">
+              <h4 className="font-semibold text-sm text-blue-900 mb-2">
+                ℹ️ Over notificaties
+              </h4>
+              <div className="text-xs text-blue-700 space-y-2">
+                <p>
+                  • Huisgenoten moeten eerst de schema pagina bezoeken en toestemming geven voor notificaties
+                </p>
+                <p>
+                  • Notificaties werken alleen op apparaten die ingelogd zijn en de pagina hebben bezocht
+                </p>
+                <p>
+                  • Automatische wekelijkse herinneringen worden elke maandag verstuurd (via Vercel Cron)
+                </p>
+              </div>
+            </div>
           </div>
         )}
       </div>

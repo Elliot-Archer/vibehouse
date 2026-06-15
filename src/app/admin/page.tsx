@@ -19,8 +19,8 @@ export default async function AdminPage() {
 
   if (!profile) redirect('/login')
 
-  const adminUserId = process.env.ADMIN_USER_ID
-  if (authUser.id !== adminUserId) {
+  const adminIds = (process.env.ADMIN_USER_IDS ?? '').split(',').filter(Boolean)
+  if (!adminIds.includes(authUser.id)) {
     return (
       <div className="px-4 pt-12">
         <h1 className="text-xl font-bold text-slate-900 mb-4">Beheer</h1>

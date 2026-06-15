@@ -37,14 +37,18 @@ export default function WachtwoordPage() {
   }
 
   return (
-    <div className="px-4 pt-12 pb-8 max-w-sm mx-auto">
-      <div className="flex items-center gap-3 mb-6">
-        <img src="/logo.png" alt="Tjokkellust" className="w-12 h-12 object-contain drop-shadow" />
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 leading-tight">Tjokkellust</h1>
-          <p className="text-sm text-slate-500">Wachtwoord wijzigen</p>
+    <div className="flex flex-col min-h-full">
+      <header className="bg-gradient-to-r from-secondary-900 to-secondary-800 px-4 pt-12 pb-6 shadow-lg">
+        <div className="flex items-center gap-3">
+          <img src="/logo.png" alt="Tjokkellust" className="w-14 h-14 object-contain drop-shadow-lg" />
+          <div>
+            <p className="text-primary-400 text-xs font-semibold uppercase tracking-widest">Profiel</p>
+            <h1 className="text-2xl font-bold text-white leading-tight">Tjokkellust</h1>
+          </div>
         </div>
-      </div>
+      </header>
+
+    <div className="px-4 pt-6 pb-8 max-w-sm mx-auto w-full">
 
       {success ? (
         <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
@@ -98,6 +102,7 @@ export default function WachtwoordPage() {
           </button>
         </form>
       )}
+    </div>
     </div>
   )
 }

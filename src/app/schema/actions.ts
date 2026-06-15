@@ -12,7 +12,10 @@ async function createClient() {
     {
       cookies: {
         getAll: () => cookieStore.getAll(),
-        setAll: (c) => c.forEach(({ name, value, options }) => cookieStore.set(name, value, options)),
+        setAll: (c: { name: string; value: string; options?: object }[]) =>
+          c.forEach(({ name, value, options }) =>
+            cookieStore.set(name, value, options as Parameters<typeof cookieStore.set>[2])
+          ),
       },
     }
   )

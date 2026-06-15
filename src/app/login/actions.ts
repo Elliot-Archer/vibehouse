@@ -12,9 +12,9 @@ export async function loginAction(email: string, password: string) {
     {
       cookies: {
         getAll: () => cookieStore.getAll(),
-        setAll: (cookiesToSet) =>
+        setAll: (cookiesToSet: { name: string; value: string; options?: object }[]) =>
           cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
+            cookieStore.set(name, value, options as Parameters<typeof cookieStore.set>[2])
           ),
       },
     }

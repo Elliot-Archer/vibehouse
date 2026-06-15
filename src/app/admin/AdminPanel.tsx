@@ -34,6 +34,10 @@ export default function AdminPanel({
   const [selectedTaskId, setSelectedTaskId] = useState<string>('')
   const [membersLoading, setMembersLoading] = useState(false)
 
+  // Delete loading guards
+  const [removingUserId, setRemovingUserId] = useState<string | null>(null)
+  const [removingTaskId, setRemovingTaskId] = useState<string | null>(null)
+
   function showMessage(type: 'success' | 'error', text: string) {
     setMessage({ type, text })
     setTimeout(() => setMessage(null), 4000)
@@ -63,6 +67,8 @@ export default function AdminPanel({
 
   async function removeUser(userId: string) {
     if (!confirm('Weet je zeker dat je deze gebruiker wilt verwijderen?')) return
+    if (removingUserId) return
+    setRemovingUserId(userId)
     const res = await fetch(`/api/admin/users?id=${userId}`, { method: 'DELETE' })
     if (res.ok) {
       setUsers((prev) => prev.filter((u) => u.id !== userId))
@@ -70,6 +76,7 @@ export default function AdminPanel({
     } else {
       showMessage('error', 'Fout bij verwijderen')
     }
+    setRemovingUserId(null)
   }
 
   async function addTask(e: React.FormEvent) {
@@ -94,6 +101,8 @@ export default function AdminPanel({
 
   async function removeTask(taskId: string) {
     if (!confirm('Weet je zeker dat je deze taak wilt verwijderen?')) return
+    if (removingTaskId) return
+    setRemovingTaskId(taskId)
     const res = await fetch(`/api/admin/tasks?id=${taskId}`, { method: 'DELETE' })
     if (res.ok) {
       setTasks((prev) => prev.filter((t) => t.id !== taskId))
@@ -102,6 +111,7 @@ export default function AdminPanel({
     } else {
       showMessage('error', 'Fout bij verwijderen')
     }
+    setRemovingTaskId(null)
   }
 
   function getMembersForTask(taskId: string): TaskMember[] {
@@ -167,13 +177,10 @@ export default function AdminPanel({
   }
 
   async function regenerateSchema() {
-    const res = await fetch('/api/cron/weekly-reminder', {
-      headers: { Authorization: `Bearer ${process.env.CRON_SECRET || ''}` },
-    })
+    const res = await fetch('/api/admin/regenerate-schedule', { method: 'POST' })
     if (res.ok) {
       showMessage('success', 'Schema opnieuw gegenereerd!')
     } else {
-      // Try direct upsert via schedule API
       showMessage('error', 'Fout bij genereren — probeer het opnieuw')
     }
   }
@@ -236,9 +243,10 @@ export default function AdminPanel({
                   </div>
                   <button
                     onClick={() => removeUser(user.id)}
-                    className="text-xs text-red-500 hover:text-red-700 border border-red-200 rounded-full px-2 py-1 hover:bg-red-50 transition-colors"
+                    disabled={removingUserId === user.id}
+                    className="text-xs text-red-500 hover:text-red-700 border border-red-200 rounded-full px-2 py-1 hover:bg-red-50 transition-colors disabled:opacity-50"
                   >
-                    Verwijder
+                    {removingUserId === user.id ? '...' : 'Verwijder'}
                   </button>
                 </div>
               ))}
@@ -298,9 +306,10 @@ export default function AdminPanel({
                   <p className="font-medium text-sm text-slate-900">{task.name}</p>
                   <button
                     onClick={() => removeTask(task.id)}
-                    className="text-xs text-red-500 hover:text-red-700 border border-red-200 rounded-full px-2 py-1 hover:bg-red-50 transition-colors"
+                    disabled={removingTaskId === task.id}
+                    className="text-xs text-red-500 hover:text-red-700 border border-red-200 rounded-full px-2 py-1 hover:bg-red-50 transition-colors disabled:opacity-50"
                   >
-                    Verwijder
+                    {removingTaskId === task.id ? '...' : 'Verwijder'}
                   </button>
                 </div>
               ))}

@@ -1,25 +1,10 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { createSupabaseServerClient, createSupabaseServiceClient } from '@/lib/supabase-server'
-
-async function isAdmin(request: NextRequest): Promise<boolean> {
-  const supabase = await createSupabaseServerClient()
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser()
-
-  if (!authUser) return false
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('id')
-    .eq('email', authUser.email)
-    .single()
-
-  return profile?.id === process.env.ADMIN_USER_ID
-}
+import { createSupabaseServiceClient } from '@/lib/supabase-server'
+import { isAdminRequest } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
-  if (!(await isAdmin(request))) {
+  void request
+  if (!(await isAdminRequest())) {
     return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
   }
 
@@ -31,7 +16,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  if (!(await isAdmin(request))) {
+  if (!(await isAdminRequest())) {
     return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
   }
 
@@ -53,7 +38,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  if (!(await isAdmin(request))) {
+  if (!(await isAdminRequest())) {
     return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
   }
 

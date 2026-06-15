@@ -6,11 +6,12 @@ import type { ScheduleEntry, Task } from '@/types'
 
 export async function GET(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET
-  if (cronSecret) {
-    const authHeader = request.headers.get('Authorization')
-    if (authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: 'Geen toegang' }, { status: 401 })
-    }
+  if (!cronSecret) {
+    return NextResponse.json({ error: 'CRON_SECRET is not configured' }, { status: 500 })
+  }
+  const authHeader = request.headers.get('Authorization')
+  if (authHeader !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: 'Geen toegang' }, { status: 401 })
   }
 
   const supabase = createSupabaseServiceClient()
@@ -46,20 +47,20 @@ export async function GET(request: NextRequest) {
     (tasks || []).map((t: Task) => [t.id, t])
   )
 
-  let sent = 0
-  await Promise.allSettled(
-    (entries as ScheduleEntry[]).map(async (entry) => {
+  const serviceSupabase = supabase
+  const results = await Promise.allSettled(
+    (entries as ScheduleEntry[]).map((entry) => {
       const task = taskMap.get(entry.task_id)
-      if (!task) return
+      if (!task) return Promise.reject(new Error('Task not found'))
 
-      await sendPushToUser(supabase, entry.user_id, {
+      return sendPushToUser(serviceSupabase, entry.user_id, {
         title: 'Vibehouse',
         body: `Vergeet je taak niet: ${task.name}`,
         url: '/schema',
       })
-      sent++
     })
   )
+  const sent = results.filter(r => r.status === 'fulfilled').length
 
   return NextResponse.json({ ok: true, sent })
 }

@@ -270,7 +270,7 @@ export default async function SchemaPage({ searchParams }: PageProps) {
                         entryId={wt.entry.id}
                         requesterId={profile.id}
                         housemates={housemates}
-                        existingSwapId={wt.outgoingSwap}
+                        existingSwapId={undefined}
                       />
                     )}
                     {wt.outgoingSwap && (

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { requestSwapAction, cancelSwapAction } from './actions'
 import type { User } from '@/types'
 
 interface SwapButtonProps {
@@ -14,7 +14,7 @@ interface SwapButtonProps {
 
 export default function SwapButton({
   entryId,
-  requesterId,
+  requesterId: _requesterId,
   housemates,
   existingSwapId,
 }: SwapButtonProps) {
@@ -25,14 +25,9 @@ export default function SwapButton({
 
   async function handleRequest(targetId: string) {
     setLoading(true)
-    const { error } = await supabase.from('swap_requests').insert({
-      requester_id: requesterId,
-      target_id: targetId,
-      entry_id: entryId,
-      status: 'pending',
-    })
+    const result = await requestSwapAction(entryId, targetId)
 
-    if (!error) {
+    if (!result.error) {
       setOpen(false)
       router.refresh()
     }
@@ -42,7 +37,7 @@ export default function SwapButton({
   async function handleCancel() {
     if (!existingSwapId) return
     setCancelLoading(true)
-    await supabase.from('swap_requests').delete().eq('id', existingSwapId)
+    await cancelSwapAction(existingSwapId)
     setCancelLoading(false)
     router.refresh()
   }

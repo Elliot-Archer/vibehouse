@@ -1,30 +1,46 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl
+  let supabaseResponse = NextResponse.next({ request })
 
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => request.cookies.getAll(),
+        setAll: (cookiesToSet) => {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          supabaseResponse = NextResponse.next({ request })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
+  )
+
+  // Use getUser() — validates JWT server-side, cannot be spoofed by cookie name
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const { pathname } = request.nextUrl
   const protectedRoutes = ['/schema', '/ruilverzoeken', '/admin']
   const isProtected = protectedRoutes.some((route) => pathname.startsWith(route))
 
-  // Check for session via the access token cookie set after login
-  const allCookies = request.cookies.getAll()
-  const hasSession = allCookies.some(
-    (c) => c.name.includes('auth-token') || c.name === 'sb-access-token'
-  )
-
-  if (!hasSession && isProtected) {
+  if (!user && isProtected) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
-  if (hasSession && pathname === '/login') {
+  if (user && pathname === '/login') {
     const url = request.nextUrl.clone()
     url.pathname = '/schema'
     return NextResponse.redirect(url)
   }
 
-  return NextResponse.next({ request })
+  return supabaseResponse
 }
 
 export const config = {

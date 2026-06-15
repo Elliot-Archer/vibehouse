@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { markDoneAction } from './actions'
 
 interface MarkDoneButtonProps {
   entryId: string
@@ -18,14 +18,10 @@ export default function MarkDoneButton({
 
   async function handleClick() {
     setLoading(true)
-    const newStatus = currentStatus === 'done' ? 'pending' : 'done'
 
-    const { error } = await supabase
-      .from('schedule_entries')
-      .update({ status: newStatus })
-      .eq('id', entryId)
+    const result = await markDoneAction(entryId)
 
-    if (!error) {
+    if (!result.error) {
       router.refresh()
     }
     setLoading(false)

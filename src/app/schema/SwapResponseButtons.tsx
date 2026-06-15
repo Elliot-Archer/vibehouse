@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { respondSwapAction } from './actions'
 
 interface SwapResponseButtonsProps {
   swapId: string
@@ -13,42 +13,23 @@ interface SwapResponseButtonsProps {
 
 export default function SwapResponseButtons({
   swapId,
-  entryId,
-  requesterId,
-  currentUserId,
+  entryId: _entryId,
+  requesterId: _requesterId,
+  currentUserId: _currentUserId,
 }: SwapResponseButtonsProps) {
   const router = useRouter()
   const [loading, setLoading] = useState<'accept' | 'decline' | null>(null)
 
   async function handleAccept() {
     setLoading('accept')
-
-    // Update swap request to accepted
-    const { error: swapError } = await supabase
-      .from('swap_requests')
-      .update({ status: 'accepted' })
-      .eq('id', swapId)
-
-    if (!swapError) {
-      // Transfer the entry to the current user (target who accepted)
-      await supabase
-        .from('schedule_entries')
-        .update({ user_id: currentUserId })
-        .eq('id', entryId)
-    }
-
+    await respondSwapAction(swapId, true)
     setLoading(null)
     router.refresh()
   }
 
   async function handleDecline() {
     setLoading('decline')
-
-    await supabase
-      .from('swap_requests')
-      .update({ status: 'declined' })
-      .eq('id', swapId)
-
+    await respondSwapAction(swapId, false)
     setLoading(null)
     router.refresh()
   }

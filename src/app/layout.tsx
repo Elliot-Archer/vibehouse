@@ -49,8 +49,8 @@ export default async function RootLayout({
     // Not authenticated
   }
 
-  const adminUserId = process.env.ADMIN_USER_ID
-  const isAdmin = user?.id === adminUserId
+  const adminIds = (process.env.ADMIN_USER_IDS ?? '').split(',').filter(Boolean)
+  const isAdmin = !!user && adminIds.includes(user.id)
 
   return (
     <html lang="nl">

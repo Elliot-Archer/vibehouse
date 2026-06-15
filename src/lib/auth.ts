@@ -6,8 +6,12 @@ export async function getAuthenticatedUser() {
   return user
 }
 
+export function getAdminIds(): string[] {
+  return (process.env.ADMIN_USER_IDS ?? '').split(',').filter(Boolean)
+}
+
 export async function isAdminRequest(): Promise<boolean> {
   const user = await getAuthenticatedUser()
   if (!user) return false
-  return user.id === process.env.ADMIN_USER_ID
+  return getAdminIds().includes(user.id)
 }

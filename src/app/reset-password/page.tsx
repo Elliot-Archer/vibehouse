@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 
 const createClient = async () => {
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -23,10 +23,11 @@ const createClient = async () => {
 }
 
 export default async function ResetPassword({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { message: string; code: string }
+  searchParams: Promise<{ message: string; code: string }>
 }) {
+  const searchParams = await searchParamsPromise
   const supabase = await createClient()
 
   const {

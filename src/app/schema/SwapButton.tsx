@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { requestSwapAction, cancelSwapAction } from './actions'
 import type { User } from '@/types'
@@ -19,48 +19,51 @@ export default function SwapButton({
   existingSwapId,
 }: SwapButtonProps) {
   const router = useRouter()
+  const [, startTransition] = useTransition()
   const [open, setOpen] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [cancelLoading, setCancelLoading] = useState(false)
   const [error, setError] = useState('')
   const [toast, setToast] = useState('')
+  const [cancelled, setCancelled] = useState(false)
 
   function showToast(msg: string) {
     setToast(msg)
     setTimeout(() => setToast(''), 3000)
   }
 
-  async function handleRequest(targetId: string, targetName: string) {
-    setLoading(true)
+  function handleRequest(targetId: string, targetName: string) {
+    // Close instantly and confirm; the request runs in the background.
+    setOpen(false)
     setError('')
-    const result = await requestSwapAction(entryId, targetId)
-
-    if (result.error) {
-      setError(result.error)
-    } else {
-      setOpen(false)
-      showToast(`✓ Ruilverzoek verstuurd naar ${targetName}!`)
-      router.refresh()
-    }
-    setLoading(false)
+    showToast(`✓ Ruilverzoek verstuurd naar ${targetName}!`)
+    startTransition(async () => {
+      const result = await requestSwapAction(entryId, targetId)
+      if (result.error) {
+        setToast('')
+        setError(result.error)
+        setOpen(true)
+      } else {
+        router.refresh()
+      }
+    })
   }
 
-  async function handleCancel() {
+  function handleCancel() {
     if (!existingSwapId) return
-    setCancelLoading(true)
-    await cancelSwapAction(existingSwapId)
-    setCancelLoading(false)
-    router.refresh()
+    setCancelled(true) // hide instantly
+    startTransition(async () => {
+      await cancelSwapAction(existingSwapId)
+      router.refresh()
+    })
   }
 
   if (existingSwapId) {
+    if (cancelled) return null
     return (
       <button
         onClick={handleCancel}
-        disabled={cancelLoading}
-        className="text-xs text-orange-600 border border-orange-200 bg-orange-50 rounded-full px-3 py-1 hover:bg-orange-100 transition-colors disabled:opacity-50"
+        className="text-xs text-orange-600 border border-orange-200 bg-orange-50 rounded-full px-3 py-1 hover:bg-orange-100 transition-colors"
       >
-        {cancelLoading ? '...' : 'Ruiling annuleren'}
+        Ruiling annuleren
       </button>
     )
   }
@@ -105,14 +108,13 @@ export default function SwapButton({
                 <button
                   key={mate.id}
                   onClick={() => handleRequest(mate.id, mate.name)}
-                  disabled={loading}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:border-secondary-400 hover:bg-secondary-50 transition-colors text-left disabled:opacity-50"
+                  className="w-full flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:border-secondary-400 hover:bg-secondary-50 transition-colors text-left"
                 >
                   <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-secondary-700 font-semibold text-sm flex-shrink-0">
                     {mate.name.charAt(0).toUpperCase()}
                   </div>
                   <span className="text-sm font-medium text-slate-800">
-                    {loading ? 'Bezig...' : mate.name}
+                    {mate.name}
                   </span>
                 </button>
               ))}

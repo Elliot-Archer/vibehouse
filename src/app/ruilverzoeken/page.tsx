@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { getSessionUser } from '@/lib/session'
 import type { SwapRequest, User, Task, ScheduleEntry } from '@/types'
 import SwapResponseButtons from '../schema/SwapResponseButtons'
 import { format } from 'date-fns'
@@ -8,32 +9,30 @@ import { nl } from 'date-fns/locale'
 export default async function RuilverzoekPage() {
   const supabase = await createSupabaseServerClient()
 
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser()
-
-  if (!authUser) redirect('/login')
+  const session = await getSessionUser()
+  if (!session) redirect('/login')
 
   const { data: profile } = await supabase
     .from('users')
     .select('*')
-    .eq('email', authUser.email)
+    .eq('email', session.email)
     .single()
 
   if (!profile) redirect('/login')
 
-  // Fetch all swap requests involving current user
-  const { data: sent } = await supabase
-    .from('swap_requests')
-    .select('*')
-    .eq('requester_id', profile.id)
-    .order('id', { ascending: false })
-
-  const { data: received } = await supabase
-    .from('swap_requests')
-    .select('*')
-    .eq('target_id', profile.id)
-    .order('id', { ascending: false })
+  // Fetch sent and received swap requests in parallel
+  const [{ data: sent }, { data: received }] = await Promise.all([
+    supabase
+      .from('swap_requests')
+      .select('*')
+      .eq('requester_id', profile.id)
+      .order('id', { ascending: false }),
+    supabase
+      .from('swap_requests')
+      .select('*')
+      .eq('target_id', profile.id)
+      .order('id', { ascending: false }),
+  ])
 
   const allSwaps = [
     ...((sent || []).map((s: SwapRequest) => ({ ...s, direction: 'sent' as const }))),

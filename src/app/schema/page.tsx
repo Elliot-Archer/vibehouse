@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { getSessionUser } from '@/lib/session'
 import { getCurrentMonday, formatWeekDate, getMonday } from '@/lib/schedule'
 import { upsertWeekSchedule } from '@/lib/schedule'
 import type { Task, User, ScheduleEntry, SwapRequest } from '@/types'
@@ -19,20 +20,9 @@ export default async function SchemaPage({ searchParams }: PageProps) {
   const params = await searchParams
   const supabase = await createSupabaseServerClient()
 
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser()
-
-  if (!authUser) redirect('/login')
-
-  // Get user profile
-  const { data: profile } = await supabase
-    .from('users')
-    .select('*')
-    .eq('email', authUser.email)
-    .single()
-
-  if (!profile) redirect('/login')
+  // Read session from the cookie locally (no auth-server round-trip).
+  const session = await getSessionUser()
+  if (!session) redirect('/login')
 
   // Determine which week to show
   let monday: Date
@@ -44,30 +34,42 @@ export default async function SchemaPage({ searchParams }: PageProps) {
   }
 
   const weekStr = formatWeekDate(monday)
-
-  // Upsert schedule for this week (only for current/future weeks)
   const currentMonday = getCurrentMonday()
-  if (monday.getTime() >= currentMonday.getTime()) {
+
+  // Fetch the profile, this week's entries, all tasks and all users in parallel.
+  const [
+    { data: profile },
+    { data: initialEntries },
+    { data: tasks },
+    { data: users },
+  ] = await Promise.all([
+    supabase.from('users').select('*').eq('email', session.email).single(),
+    supabase.from('schedule_entries').select('*').eq('week', weekStr),
+    supabase.from('tasks').select('*'),
+    supabase.from('users').select('*'),
+  ])
+
+  if (!profile) redirect('/login')
+
+  // Generate the schedule only if it's missing for a current/future week.
+  let entries = initialEntries
+  if (
+    (!entries || entries.length === 0) &&
+    monday.getTime() >= currentMonday.getTime()
+  ) {
     try {
       await upsertWeekSchedule(supabase, monday)
+      const { data: regenerated } = await supabase
+        .from('schedule_entries')
+        .select('*')
+        .eq('week', weekStr)
+      entries = regenerated
     } catch (_) {
       // Continue even if upsert fails
     }
   }
 
-  // Fetch schedule entries for this week with task and user info
-  const { data: entries } = await supabase
-    .from('schedule_entries')
-    .select('*')
-    .eq('week', weekStr)
-
-  // Fetch all tasks
-  const { data: tasks } = await supabase.from('tasks').select('*')
-
-  // Fetch all users
-  const { data: users } = await supabase.from('users').select('*')
-
-  // Fetch swap requests involving current user for this week's entries
+  // Fetch pending swap requests for this week's entries
   const entryIds = (entries || []).map((e) => e.id)
   const { data: swapRequests } = await supabase
     .from('swap_requests')

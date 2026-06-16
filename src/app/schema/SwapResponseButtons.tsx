@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { respondSwapAction } from './actions'
 
@@ -18,37 +18,39 @@ export default function SwapResponseButtons({
   currentUserId: _currentUserId,
 }: SwapResponseButtonsProps) {
   const router = useRouter()
-  const [loading, setLoading] = useState<'accept' | 'decline' | null>(null)
+  const [isPending, startTransition] = useTransition()
+  const [done, setDone] = useState<'accept' | 'decline' | null>(null)
 
-  async function handleAccept() {
-    setLoading('accept')
-    await respondSwapAction(swapId, true)
-    setLoading(null)
-    router.refresh()
+  function respond(accept: boolean) {
+    if (done || isPending) return
+    setDone(accept ? 'accept' : 'decline') // instant feedback
+    startTransition(async () => {
+      await respondSwapAction(swapId, accept)
+      router.refresh()
+    })
   }
 
-  async function handleDecline() {
-    setLoading('decline')
-    await respondSwapAction(swapId, false)
-    setLoading(null)
-    router.refresh()
+  if (done) {
+    return (
+      <p className="text-xs text-slate-500 mt-2">
+        {done === 'accept' ? '✓ Geaccepteerd' : 'Afgewezen'}
+      </p>
+    )
   }
 
   return (
     <div className="flex gap-2 mt-2">
       <button
-        onClick={handleAccept}
-        disabled={loading !== null}
-        className="text-xs bg-green-500 text-white rounded-full px-3 py-1 hover:bg-green-600 transition-colors disabled:opacity-50"
+        onClick={() => respond(true)}
+        className="text-xs bg-green-500 text-white rounded-full px-3 py-1 hover:bg-green-600 transition-colors"
       >
-        {loading === 'accept' ? '...' : 'Accepteren'}
+        Accepteren
       </button>
       <button
-        onClick={handleDecline}
-        disabled={loading !== null}
-        className="text-xs border border-slate-200 text-slate-600 rounded-full px-3 py-1 hover:bg-slate-50 transition-colors disabled:opacity-50"
+        onClick={() => respond(false)}
+        className="text-xs border border-slate-200 text-slate-600 rounded-full px-3 py-1 hover:bg-slate-50 transition-colors"
       >
-        {loading === 'decline' ? '...' : 'Afwijzen'}
+        Afwijzen
       </button>
     </div>
   )

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { markDoneAction } from './actions'
 
@@ -14,38 +14,38 @@ export default function MarkDoneButton({
   currentStatus,
 }: MarkDoneButtonProps) {
   const router = useRouter()
-  const [loading, setLoading] = useState(false)
+  const [isPending, startTransition] = useTransition()
+  // Optimistic status: flips instantly on click, reconciled by the refresh.
+  const [optimisticDone, setOptimisticDone] = useState(currentStatus === 'done')
 
-  async function handleClick() {
-    setLoading(true)
-
-    const result = await markDoneAction(entryId)
-
-    if (!result.error) {
-      router.refresh()
-    }
-    setLoading(false)
+  function handleClick() {
+    if (optimisticDone || isPending) return
+    setOptimisticDone(true)
+    startTransition(async () => {
+      const result = await markDoneAction(entryId)
+      if (result.error) {
+        setOptimisticDone(false)
+      } else {
+        router.refresh()
+      }
+    })
   }
 
-  if (currentStatus === 'done') {
+  if (optimisticDone) {
     return (
-      <button
-        onClick={handleClick}
-        disabled={loading}
-        className="text-xs text-green-600 border border-green-200 bg-green-50 rounded-full px-3 py-1 hover:bg-green-100 transition-colors disabled:opacity-50"
-      >
-        {loading ? '...' : 'Klaar ✓'}
-      </button>
+      <span className="text-xs text-green-600 border border-green-200 bg-green-50 rounded-full px-3 py-1">
+        Klaar ✓
+      </span>
     )
   }
 
   return (
     <button
       onClick={handleClick}
-      disabled={loading}
+      disabled={isPending}
       className="btn-primary text-xs px-3 py-1"
     >
-      {loading ? '...' : 'Klaar melden'}
+      {isPending ? '...' : 'Klaar melden'}
     </button>
   )
 }

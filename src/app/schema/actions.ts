@@ -3,6 +3,8 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { revalidatePath } from 'next/cache'
+import { getSessionUser } from '@/lib/session'
+import { createSupabaseServiceClient } from '@/lib/supabase-server'
 
 async function createClient() {
   const cookieStore = await cookies()
@@ -21,30 +23,27 @@ async function createClient() {
   )
 }
 
-async function getProfile(supabase: Awaited<ReturnType<typeof createClient>>) {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-  const { data: profile } = await supabase
+// Resolves the caller's profile id (users.id) from the local session cookie.
+// One DB query, no auth-server round-trip.
+async function getProfileId(
+  supabase: Awaited<ReturnType<typeof createClient>>
+): Promise<string | null> {
+  const session = await getSessionUser()
+  if (!session) return null
+  const { data } = await supabase
     .from('users')
     .select('id')
-    .eq('email', user.email)
+    .eq('email', session.email)
     .single()
-  return profile
+  return data?.id ?? null
 }
 
 export async function markDoneAction(entryId: string) {
+  const session = await getSessionUser()
+  if (!session) return { error: 'Niet ingelogd' }
+
   const supabase = await createClient()
-  const profile = await getProfile(supabase)
-  if (!profile) return { error: 'Niet ingelogd' }
-
-  const { data: entry } = await supabase
-    .from('schedule_entries')
-    .select('user_id')
-    .eq('id', entryId)
-    .single()
-
-  if (!entry || entry.user_id !== profile.id) return { error: 'Geen toegang' }
-
+  // RLS enforces that only the owner can update this row.
   const { error } = await supabase
     .from('schedule_entries')
     .update({ status: 'done' })
@@ -57,20 +56,13 @@ export async function markDoneAction(entryId: string) {
 
 export async function requestSwapAction(entryId: string, targetUserId: string) {
   const supabase = await createClient()
-  const profile = await getProfile(supabase)
-  if (!profile) return { error: 'Niet ingelogd' }
+  const profileId = await getProfileId(supabase)
+  if (!profileId) return { error: 'Niet ingelogd' }
 
-  const { data: entry } = await supabase
-    .from('schedule_entries')
-    .select('user_id')
-    .eq('id', entryId)
-    .single()
-
-  if (!entry || entry.user_id !== profile.id) return { error: 'Geen toegang' }
-
+  // RLS with-check enforces requester_id = own profile id.
   const { error } = await supabase
     .from('swap_requests')
-    .insert({ requester_id: profile.id, target_id: targetUserId, entry_id: entryId, status: 'pending' })
+    .insert({ requester_id: profileId, target_id: targetUserId, entry_id: entryId, status: 'pending' })
 
   if (error) return { error: error.message }
   revalidatePath('/schema')
@@ -79,18 +71,11 @@ export async function requestSwapAction(entryId: string, targetUserId: string) {
 }
 
 export async function cancelSwapAction(swapId: string) {
+  const session = await getSessionUser()
+  if (!session) return { error: 'Niet ingelogd' }
+
   const supabase = await createClient()
-  const profile = await getProfile(supabase)
-  if (!profile) return { error: 'Niet ingelogd' }
-
-  const { data: swap } = await supabase
-    .from('swap_requests')
-    .select('requester_id')
-    .eq('id', swapId)
-    .single()
-
-  if (!swap || swap.requester_id !== profile.id) return { error: 'Geen toegang' }
-
+  // RLS enforces that only the requester can delete.
   const { error } = await supabase.from('swap_requests').delete().eq('id', swapId)
   if (error) return { error: error.message }
   revalidatePath('/schema')
@@ -100,8 +85,8 @@ export async function cancelSwapAction(swapId: string) {
 
 export async function respondSwapAction(swapId: string, accept: boolean) {
   const supabase = await createClient()
-  const profile = await getProfile(supabase)
-  if (!profile) return { error: 'Niet ingelogd' }
+  const profileId = await getProfileId(supabase)
+  if (!profileId) return { error: 'Niet ingelogd' }
 
   const { data: swap } = await supabase
     .from('swap_requests')
@@ -109,12 +94,15 @@ export async function respondSwapAction(swapId: string, accept: boolean) {
     .eq('id', swapId)
     .single()
 
-  if (!swap || swap.target_id !== profile.id) return { error: 'Geen toegang' }
+  if (!swap || swap.target_id !== profileId) return { error: 'Geen toegang' }
 
   if (accept) {
-    const { error: entryError } = await supabase
+    // Transferring the entry to a new owner requires bypassing the
+    // owner-only RLS update policy. Caller is verified as the swap target above.
+    const service = createSupabaseServiceClient()
+    const { error: entryError } = await service
       .from('schedule_entries')
-      .update({ user_id: profile.id })
+      .update({ user_id: profileId })
       .eq('id', swap.entry_id)
     if (entryError) return { error: entryError.message }
   }

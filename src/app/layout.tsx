@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import Link from 'next/link'
 import './globals.css'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { getSessionUser } from '@/lib/session'
 import { LogoutButton } from './LogoutButton'
 
 export const metadata: Metadata = {
@@ -36,27 +36,8 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  let user = null
-  let profile = null
-
-  try {
-    const supabase = await createSupabaseServerClient()
-    const {
-      data: { user: authUser },
-    } = await supabase.auth.getUser()
-
-    if (authUser) {
-      user = authUser
-      const { data } = await supabase
-        .from('users')
-        .select('*')
-        .eq('email', authUser.email)
-        .single()
-      profile = data
-    }
-  } catch (_) {
-    // Not authenticated
-  }
+  // Read session from the cookie locally — no auth-server round-trip.
+  const user = await getSessionUser()
 
   const adminIds = (process.env.ADMIN_USER_IDS ?? '').split(',').filter(Boolean)
   const isAdmin = !!user && adminIds.includes(user.id)

@@ -236,9 +236,22 @@ export default async function SchemaPage({ searchParams }: PageProps) {
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-slate-500 mt-1">
-                    {wt.isMe ? 'Jij' : wt.assignedUser.name}
-                  </p>
+                  <div className="flex items-center gap-1.5 mt-1.5">
+                    {wt.assignedUser.avatar_url ? (
+                      <img
+                        src={wt.assignedUser.avatar_url}
+                        alt={wt.assignedUser.name}
+                        className="w-5 h-5 rounded-full object-cover"
+                      />
+                    ) : (
+                      <span className="w-5 h-5 rounded-full bg-secondary-100 text-secondary-600 text-[10px] font-bold flex items-center justify-center">
+                        {wt.assignedUser.name.charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                    <span className="text-xs text-slate-500">
+                      {wt.isMe ? 'Jij' : wt.assignedUser.name}
+                    </span>
+                  </div>
 
                   {/* Incoming swap request */}
                   {wt.incomingSwap && (

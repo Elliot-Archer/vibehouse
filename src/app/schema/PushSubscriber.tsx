@@ -4,32 +4,29 @@ import { useEffect } from 'react'
 
 export default function PushSubscriber() {
   useEffect(() => {
-    async function subscribe() {
+    // Only re-sync an EXISTING subscription to the database.
+    // We never request permission automatically: iOS silently rejects
+    // permission prompts that aren't triggered by a user gesture, which
+    // left users with permission "granted" but no saved subscription.
+    // First-time opt-in happens via the button on the profile page.
+    async function syncExisting() {
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
-
-      const permission = await Notification.requestPermission()
-      if (permission !== 'granted') return
+      if (Notification.permission !== 'granted') return
 
       const registration = await navigator.serviceWorker.ready
-      const vapidKey =
-        (window as unknown as { __VAPID_PUBLIC_KEY__?: string }).__VAPID_PUBLIC_KEY__
-      if (!vapidKey) return
+      let subscription = await registration.pushManager.getSubscription()
 
-      const existing = await registration.pushManager.getSubscription()
-      if (existing) {
-        // Already subscribed — ensure it's in the DB
-        await fetch('/api/push/subscribe', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ subscription: existing.toJSON() }),
+      // Permission is granted but no live subscription exists — recreate it
+      // so the user actually receives pushes (self-heal).
+      if (!subscription) {
+        const vapidKey =
+          (window as unknown as { __VAPID_PUBLIC_KEY__?: string }).__VAPID_PUBLIC_KEY__
+        if (!vapidKey) return
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(vapidKey).buffer as ArrayBuffer,
         })
-        return
       }
-
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidKey).buffer as ArrayBuffer,
-      })
 
       await fetch('/api/push/subscribe', {
         method: 'POST',
@@ -38,7 +35,7 @@ export default function PushSubscriber() {
       })
     }
 
-    subscribe().catch(console.error)
+    syncExisting().catch(console.error)
   }, [])
 
   return null

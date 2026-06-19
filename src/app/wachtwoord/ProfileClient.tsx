@@ -66,11 +66,51 @@ export default function ProfileClient({
   // Notifications
   const [notifStatus, setNotifStatus] = useState<'unknown' | 'granted' | 'denied' | 'unsupported'>('unknown')
   const [notifLoading, setNotifLoading] = useState(false)
+  // Whether a live push subscription is actually saved (not just permission granted)
+  const [subscribed, setSubscribed] = useState(false)
+  const [isIOS, setIsIOS] = useState(false)
+  const [isStandalone, setIsStandalone] = useState(true)
+  const [notifError, setNotifError] = useState('')
 
   useEffect(() => {
-    if (!('Notification' in window)) setNotifStatus('unsupported')
-    else if (Notification.permission === 'granted') setNotifStatus('granted')
-    else if (Notification.permission === 'denied') setNotifStatus('denied')
+    if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+      setNotifStatus('unsupported')
+      return
+    }
+
+    // iOS only supports web push when the PWA is added to the home screen.
+    const ua = window.navigator.userAgent
+    const ios = /iPad|iPhone|iPod/.test(ua)
+    setIsIOS(ios)
+    const standalone =
+      (window.navigator as unknown as { standalone?: boolean }).standalone === true ||
+      window.matchMedia('(display-mode: standalone)').matches
+    setIsStandalone(standalone)
+
+    if (Notification.permission === 'denied') {
+      setNotifStatus('denied')
+      return
+    }
+
+    if (Notification.permission === 'granted') {
+      setNotifStatus('granted')
+      // Verify an actual subscription exists in the browser AND save it.
+      // Permission "granted" alone does NOT mean the user receives pushes.
+      ;(async () => {
+        try {
+          const registration = await navigator.serviceWorker.ready
+          const existing = await registration.pushManager.getSubscription()
+          if (existing) {
+            await fetch('/api/push/subscribe', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ subscription: existing.toJSON() }),
+            })
+            setSubscribed(true)
+          }
+        } catch { /* leave subscribed=false so the repair button shows */ }
+      })()
+    }
   }, [])
 
   async function handlePickFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -117,13 +157,32 @@ export default function ProfileClient({
 
   async function handleEnableNotifications() {
     setNotifLoading(true)
+    setNotifError('')
     try {
+      // iOS requires the PWA installed to the home screen for web push.
+      if (isIOS && !isStandalone) {
+        setNotifError('Voeg de app eerst toe aan je beginscherm (zie hieronder), open hem daarna en probeer opnieuw.')
+        setNotifLoading(false)
+        return
+      }
+
       const permission = await Notification.requestPermission()
-      if (permission !== 'granted') { setNotifStatus('denied'); setNotifLoading(false); return }
+      if (permission !== 'granted') {
+        setNotifStatus('denied')
+        setNotifError('Toestemming geweigerd. Sta meldingen toe in je browserinstellingen.')
+        setNotifLoading(false)
+        return
+      }
       setNotifStatus('granted')
-      const registration = await navigator.serviceWorker.ready
+
       const vapidKey = (window as unknown as { __VAPID_PUBLIC_KEY__?: string }).__VAPID_PUBLIC_KEY__
-      if (!vapidKey) { setNotifLoading(false); return }
+      if (!vapidKey) {
+        setNotifError('Serverconfiguratie ontbreekt (VAPID-sleutel). Neem contact op met de beheerder.')
+        setNotifLoading(false)
+        return
+      }
+
+      const registration = await navigator.serviceWorker.ready
       let subscription = await registration.pushManager.getSubscription()
       if (!subscription) {
         subscription = await registration.pushManager.subscribe({
@@ -131,12 +190,20 @@ export default function ProfileClient({
           applicationServerKey: urlBase64ToUint8Array(vapidKey).buffer as ArrayBuffer,
         })
       }
-      await fetch('/api/push/subscribe', {
+      const res = await fetch('/api/push/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ subscription: subscription.toJSON() }),
       })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setNotifError(`Opslaan mislukt: ${data.error ?? res.status}`)
+        setNotifLoading(false)
+        return
+      }
+      setSubscribed(true)
     } catch (e) {
+      setNotifError(e instanceof Error ? e.message : 'Onbekende fout bij inschakelen')
       console.error(e)
     }
     setNotifLoading(false)
@@ -214,26 +281,48 @@ export default function ProfileClient({
         <p className="text-xs text-slate-500 mb-3">
           Ontvang een herinnering elke maandag voor je schoonmaaktaak.
         </p>
-        {notifStatus === 'unsupported' && (
-          <p className="text-xs text-slate-400">Niet ondersteund in deze browser. Voeg de app toe aan je thuisscherm op iOS.</p>
-        )}
-        {notifStatus === 'granted' && (
-          <div className="flex items-center gap-2 text-green-700 text-sm font-medium">
-            <span>✓</span><span>Meldingen ingeschakeld</span>
+        {notifStatus === 'unsupported' ? (
+          <p className="text-xs text-slate-400">
+            Niet ondersteund in deze browser. Op iPhone: open de app via Safari en voeg hem toe aan je beginscherm.
+          </p>
+        ) : notifStatus === 'denied' ? (
+          <p className="text-xs text-red-600">
+            Meldingen zijn geblokkeerd. Zet ze aan via Instellingen → Tjokkellust → Meldingen (iOS) of via je browserinstellingen.
+          </p>
+        ) : subscribed ? (
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-green-700 text-sm font-medium">
+              <span>✓</span><span>Meldingen ingeschakeld</span>
+            </div>
+            <button
+              onClick={handleEnableNotifications}
+              disabled={notifLoading}
+              className="text-xs text-slate-400 underline disabled:opacity-50"
+            >
+              {notifLoading ? 'Bezig...' : 'Opnieuw aanmelden'}
+            </button>
           </div>
+        ) : (
+          <>
+            {/* iOS users must install the PWA before push works at all */}
+            {isIOS && !isStandalone && (
+              <div className="mb-3 bg-secondary-50 border border-secondary-200 rounded-lg p-3 text-xs text-secondary-800 space-y-1">
+                <p className="font-semibold">📲 iPhone? Eerst toevoegen aan beginscherm:</p>
+                <p>1. Tik op het deel-icoon (vierkant met pijl) in Safari</p>
+                <p>2. Kies &ldquo;Zet op beginscherm&rdquo;</p>
+                <p>3. Open de app vanaf je beginscherm en kom hier terug</p>
+              </div>
+            )}
+            <button
+              onClick={handleEnableNotifications}
+              disabled={notifLoading}
+              className="w-full bg-primary-400 text-secondary-900 rounded-lg py-2.5 text-sm font-bold hover:bg-secondary-600 hover:text-white transition-colors disabled:opacity-50"
+            >
+              {notifLoading ? 'Bezig...' : '🔔 Meldingen inschakelen'}
+            </button>
+          </>
         )}
-        {notifStatus === 'denied' && (
-          <p className="text-xs text-red-600">Meldingen zijn geblokkeerd. Pas dit aan in je browserinstellingen.</p>
-        )}
-        {notifStatus === 'unknown' && (
-          <button
-            onClick={handleEnableNotifications}
-            disabled={notifLoading}
-            className="w-full bg-primary-400 text-secondary-900 rounded-lg py-2.5 text-sm font-bold hover:bg-secondary-600 hover:text-white transition-colors disabled:opacity-50"
-          >
-            {notifLoading ? 'Bezig...' : '🔔 Meldingen inschakelen'}
-          </button>
-        )}
+        {notifError && <p className="text-xs text-red-600 mt-2">{notifError}</p>}
       </div>
 
       {/* Wachtwoord */}

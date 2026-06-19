@@ -163,10 +163,17 @@ export default async function SchemaPage({ searchParams }: PageProps) {
             <p className="text-primary-400 text-xs font-semibold uppercase tracking-widest">Schema</p>
             <h1 className="text-2xl font-bold text-white leading-tight">Tjokkellust</h1>
           </div>
-          {isCurrentWeek && (
+          {isCurrentWeek ? (
             <span className="badge bg-primary-400 text-secondary-900 font-bold px-3 py-1 rounded-full text-xs">
               Deze week
             </span>
+          ) : (
+            <Link
+              href="/schema"
+              className="text-xs font-semibold text-white bg-white/15 hover:bg-white/25 transition-colors rounded-full px-3 py-1"
+            >
+              Naar huidige week
+            </Link>
           )}
         </div>
         <div className="flex items-center justify-between">
@@ -208,16 +215,6 @@ export default async function SchemaPage({ searchParams }: PageProps) {
             </svg>
           </Link>
         </div>
-        {!isCurrentWeek && (
-          <div className="mt-3 flex justify-center">
-            <Link
-              href="/schema"
-              className="text-xs font-semibold text-white bg-white/15 hover:bg-white/25 transition-colors rounded-full px-3 py-1"
-            >
-              Naar huidige week
-            </Link>
-          </div>
-        )}
       </header>
 
       <div className="flex-1 px-4 py-4 space-y-3">

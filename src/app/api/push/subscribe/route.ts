@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { createSupabaseServerClient, createSupabaseServiceClient } from '@/lib/supabase-server'
 
 export async function POST(request: NextRequest) {
   const supabase = await createSupabaseServerClient()
@@ -29,7 +29,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Geen subscription opgegeven' }, { status: 400 })
   }
 
-  const { error } = await supabase.from('push_subscriptions').upsert(
+  // Write with the service client: user_id stores the PROFILE id, but RLS
+  // policies compare against auth.uid(), so the anon client is rejected.
+  // The caller is already verified as authenticated above.
+  const service = createSupabaseServiceClient()
+  const { error } = await service.from('push_subscriptions').upsert(
     {
       user_id: profile.id,
       subscription,

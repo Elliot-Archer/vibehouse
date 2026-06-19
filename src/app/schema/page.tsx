@@ -211,6 +211,16 @@ export default async function SchemaPage({ searchParams }: PageProps) {
             </svg>
           </Link>
         </div>
+        {!isCurrentWeek && (
+          <div className="mt-3 flex justify-center">
+            <Link
+              href="/schema"
+              className="text-xs font-semibold text-white bg-white/15 hover:bg-white/25 transition-colors rounded-full px-3 py-1"
+            >
+              Naar huidige week
+            </Link>
+          </div>
+        )}
       </header>
 
       <div className="flex-1 px-4 py-4 space-y-3">

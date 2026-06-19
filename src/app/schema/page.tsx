@@ -215,66 +215,67 @@ export default async function SchemaPage({ searchParams }: PageProps) {
               key={wt.entry.id}
               className={`card ${wt.isMe ? 'border-primary-200 bg-primary-50/30' : ''}`}
             >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-slate-900 text-sm">
-                      {wt.task.name}
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3 flex-1 min-w-0">
+                  {wt.assignedUser.avatar_url ? (
+                    <img
+                      src={wt.assignedUser.avatar_url}
+                      alt={wt.assignedUser.name}
+                      className="w-11 h-11 rounded-xl object-cover border border-slate-200 flex-shrink-0"
+                    />
+                  ) : (
+                    <span className="w-11 h-11 rounded-xl bg-secondary-100 text-secondary-600 text-base font-bold flex items-center justify-center flex-shrink-0 border border-secondary-200">
+                      {wt.assignedUser.name.charAt(0).toUpperCase()}
                     </span>
-                    {wt.isMe && (
-                      <span className="badge badge-static bg-primary-400 text-secondary-900 text-xs font-semibold">
-                        Jouw taak
-                      </span>
-                    )}
-                    {wt.entry.status === 'done' ? (
-                      <span className="badge badge-static bg-green-100 text-green-700">
-                        Klaar ✓
-                      </span>
-                    ) : (
-                      <span className="badge badge-static bg-slate-100 text-slate-500">
-                        Te doen
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1.5 mt-1.5">
-                    {wt.assignedUser.avatar_url ? (
-                      <img
-                        src={wt.assignedUser.avatar_url}
-                        alt={wt.assignedUser.name}
-                        className="w-5 h-5 rounded-full object-cover"
-                      />
-                    ) : (
-                      <span className="w-5 h-5 rounded-full bg-secondary-100 text-secondary-600 text-[10px] font-bold flex items-center justify-center">
-                        {wt.assignedUser.name.charAt(0).toUpperCase()}
-                      </span>
-                    )}
-                    <span className="text-xs text-slate-500">
-                      {wt.isMe ? 'Jij' : wt.assignedUser.name}
-                    </span>
-                  </div>
+                  )}
 
-                  {/* Incoming swap request */}
-                  {wt.incomingSwap && (
-                    <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-2">
-                      <p className="text-xs text-amber-700 font-medium">
-                        {userMap.get(wt.incomingSwap.requester_id)?.name || 'Iemand'} wil ruilen
-                      </p>
-                      <SwapResponseButtons
-                        swapId={wt.incomingSwap.id}
-                        entryId={wt.entry.id}
-                        requesterId={wt.incomingSwap.requester_id}
-                        currentUserId={profile.id}
-                      />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-slate-900 text-sm">
+                        {wt.task.name}
+                      </span>
+                      {wt.isMe && (
+                        <span className="badge badge-static bg-primary-400 text-secondary-900 text-xs font-semibold">
+                          Jouw taak
+                        </span>
+                      )}
+                      {wt.entry.status === 'done' ? (
+                        <span className="badge badge-static bg-green-100 text-green-700">
+                          Klaar ✓
+                        </span>
+                      ) : (
+                        <span className="badge badge-static bg-slate-100 text-slate-500">
+                          Te doen
+                        </span>
+                      )}
                     </div>
-                  )}
-
-                  {/* Outgoing swap request */}
-                  {wt.outgoingSwap && !wt.incomingSwap && (
-                    <p className="text-xs text-orange-600 mt-1">
-                      Ruilverzoek verstuurd naar{' '}
-                      {userMap.get(wt.outgoingSwap.target_id)?.name || 'huisgenoot'}
+                    <p className="mt-1.5 text-sm text-slate-500">
+                      {wt.isMe ? 'Jij' : wt.assignedUser.name}
                     </p>
-                  )}
+
+                    {/* Incoming swap request */}
+                    {wt.incomingSwap && (
+                      <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-2">
+                        <p className="text-xs text-amber-700 font-medium">
+                          {userMap.get(wt.incomingSwap.requester_id)?.name || 'Iemand'} wil ruilen
+                        </p>
+                        <SwapResponseButtons
+                          swapId={wt.incomingSwap.id}
+                          entryId={wt.entry.id}
+                          requesterId={wt.incomingSwap.requester_id}
+                          currentUserId={profile.id}
+                        />
+                      </div>
+                    )}
+
+                    {/* Outgoing swap request */}
+                    {wt.outgoingSwap && !wt.incomingSwap && (
+                      <p className="text-xs text-orange-600 mt-1">
+                        Ruilverzoek verstuurd naar{' '}
+                        {userMap.get(wt.outgoingSwap.target_id)?.name || 'huisgenoot'}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 {/* Action buttons */}

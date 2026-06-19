@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { updateProfileAction, updatePasswordAction } from './actions'
+import { LogoutButton } from '../LogoutButton'
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
@@ -177,6 +178,7 @@ export default function ProfileClient({
           <input
             ref={fileInputRef}
             type="file"
+            aria-label="Profielfoto uploaden"
             accept="image/png,image/jpeg,image/webp"
             onChange={handlePickFile}
             className="hidden"
@@ -280,6 +282,10 @@ export default function ProfileClient({
             </button>
           </form>
         )}
+      </div>
+
+      <div className="pt-2">
+        <LogoutButton variant="profile" />
       </div>
 
     </div>

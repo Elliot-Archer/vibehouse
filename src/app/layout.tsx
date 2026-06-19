@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from 'next'
 import Link from 'next/link'
 import './globals.css'
 import { getSessionUser } from '@/lib/session'
-import { LogoutButton } from './LogoutButton'
 
 export const metadata: Metadata = {
   title: 'Tjokkellust',
@@ -65,7 +64,6 @@ export default async function RootLayout({
                 {isAdmin && (
                   <NavItem href="/admin" label="Beheer" icon={<AdminIcon />} />
                 )}
-                <LogoutButton />
               </div>
             </nav>
           )}
@@ -75,11 +73,27 @@ export default async function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `
               window.__VAPID_PUBLIC_KEY__ = ${JSON.stringify(process.env.VAPID_PUBLIC_KEY || '')};
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
+              window.addEventListener('load', async function() {
+                if (!('serviceWorker' in navigator)) return;
+
+                const isProd = ${JSON.stringify(process.env.NODE_ENV === 'production')};
+
+                if (isProd) {
                   navigator.serviceWorker.register('/sw.js', { scope: '/' });
-                });
-              }
+                  return;
+                }
+
+                // In development: avoid stale cached Next.js chunks causing runtime crashes.
+                try {
+                  const registrations = await navigator.serviceWorker.getRegistrations();
+                  await Promise.all(registrations.map((registration) => registration.unregister()));
+
+                  if ('caches' in window) {
+                    const keys = await caches.keys();
+                    await Promise.all(keys.map((key) => caches.delete(key)));
+                  }
+                } catch (_) {}
+              });
             `,
           }}
         />

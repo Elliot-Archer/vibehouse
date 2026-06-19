@@ -114,6 +114,17 @@ export function getFirstWastePickupInWeek(monday: Date): WastePickup | null {
   )
 }
 
+export function getWastePickupsInWeek(monday: Date): WastePickup[] {
+  const weekStart = formatDateInAmsterdam(monday)
+  const sunday = new Date(monday)
+  sunday.setDate(sunday.getDate() + 6)
+  const weekEnd = formatDateInAmsterdam(sunday)
+
+  return WASTE_PICKUPS_2026.filter(
+    (pickup) => pickup.datum >= weekStart && pickup.datum <= weekEnd
+  )
+}
+
 export function getTomorrowWastePickups(now: Date): WastePickup[] {
   const today = formatDateInAmsterdam(now)
   const tomorrow = addDays(today, 1)

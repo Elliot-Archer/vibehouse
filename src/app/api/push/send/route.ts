@@ -1,30 +1,18 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { cookies } from 'next/headers'
-import { createServerClient } from '@supabase/ssr'
+import { getSessionUser } from '@/lib/session'
 import { createSupabaseServiceClient } from '@/lib/supabase-server'
 import { sendPushToUser } from '@/lib/push'
 
 export async function POST(request: NextRequest) {
-  // Allow only internal server calls (via CRON_SECRET) or admin users
+  // Allow internal server calls (via CRON_SECRET) or admin users.
   const authHeader = request.headers.get('authorization')
   const cronSecret = process.env.CRON_SECRET
-  const isInternalCall = cronSecret && authHeader === `Bearer ${cronSecret}`
+  const isInternalCall = !!cronSecret && authHeader === `Bearer ${cronSecret}`
 
   if (!isInternalCall) {
-    // Check if caller is admin
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll: () => cookieStore.getAll(),
-          setAll: () => {},
-        },
-      }
-    )
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user || user.id !== process.env.ADMIN_USER_ID) {
+    const session = await getSessionUser()
+    const adminIds = (process.env.ADMIN_USER_IDS ?? '').split(',').filter(Boolean)
+    if (!session || !adminIds.includes(session.id)) {
       return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
     }
   }
@@ -39,8 +27,8 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    await sendPushToUser(serviceSupabase, userId, { title, body: msgBody, url })
-    return NextResponse.json({ ok: true })
+    const count = await sendPushToUser(serviceSupabase, userId, { title, body: msgBody, url })
+    return NextResponse.json({ ok: true, count })
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Onbekende fout' },

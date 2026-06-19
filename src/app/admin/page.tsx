@@ -25,18 +25,22 @@ export default async function AdminPage() {
   }
 
   // Fetch initial data in parallel
-  const [{ data: users }, { data: tasks }, { data: taskMembers }] =
+  const [{ data: users }, { data: tasks }, { data: taskMembers }, { data: subs }] =
     await Promise.all([
       supabase.from('users').select('*').order('name'),
       supabase.from('tasks').select('*').order('name'),
       supabase.from('task_members').select('*').order('order'),
+      supabase.from('push_subscriptions').select('user_id'),
     ])
+
+  const subscribedUserIds = [...new Set((subs || []).map((s) => s.user_id))]
 
   return (
     <AdminPanel
       initialUsers={users || []}
       initialTasks={tasks || []}
       initialTaskMembers={taskMembers || []}
+      subscribedUserIds={subscribedUserIds}
     />
   )
 }

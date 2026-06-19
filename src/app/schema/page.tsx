@@ -11,6 +11,11 @@ import SwapResponseButtons from './SwapResponseButtons'
 import PushSubscriber from './PushSubscriber'
 import { format, addDays } from 'date-fns'
 import { nl } from 'date-fns/locale'
+import {
+  getFirstWastePickupInWeek,
+  getWasteTypeLabel,
+  type WasteType,
+} from '@/lib/waste'
 
 interface PageProps {
   searchParams: Promise<{ week?: string }>
@@ -131,6 +136,13 @@ export default async function SchemaPage({ searchParams }: PageProps) {
     (u: User) => u.id !== profile.id
   )
 
+  const elliotUserId = process.env.ELLIOT_USER_ID
+  const elliotUser = elliotUserId ? userMap.get(elliotUserId) : undefined
+  const nextWaste = getFirstWastePickupInWeek(monday)
+  const nextWasteReminderDate = nextWaste
+    ? addDays(new Date(`${nextWaste.datum}T12:00:00`), -1)
+    : null
+
   // Week navigation
   const prevMonday = new Date(monday)
   prevMonday.setDate(monday.getDate() - 7)
@@ -202,6 +214,43 @@ export default async function SchemaPage({ searchParams }: PageProps) {
       </header>
 
       <div className="flex-1 px-4 py-4 space-y-3">
+        {nextWaste ? (
+          <div className="card border-emerald-200 bg-emerald-50/50">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                {elliotUser?.avatar_url ? (
+                  <img
+                    src={elliotUser.avatar_url}
+                    alt={elliotUser.name}
+                    className="w-10 h-10 rounded-xl object-cover border border-slate-200 flex-shrink-0"
+                  />
+                ) : (
+                  <span className="w-10 h-10 rounded-xl bg-secondary-100 text-secondary-600 text-sm font-bold flex items-center justify-center flex-shrink-0 border border-secondary-200">
+                    {(elliotUser?.name || 'Elliot').charAt(0).toUpperCase()}
+                  </span>
+                )}
+
+                <div className="min-w-0">
+                  <p className="font-semibold text-slate-900 text-sm">Vuilnis</p>
+                  {nextWasteReminderDate && (
+                    <p className="text-xs text-slate-600">
+                      {`${capitalizeFirst(
+                        format(nextWasteReminderDate, 'EEEE', { locale: nl })
+                      )}avond ${format(nextWasteReminderDate, 'd MMMM', {
+                        locale: nl,
+                      })}`}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${getWasteTypeBadgeClasses(nextWaste.type)}`}>
+                {getWasteTypeLabel(nextWaste.type)}
+              </span>
+            </div>
+          </div>
+        ) : null}
+
         {weekTasks.length === 0 ? (
           <div className="text-center py-16">
             <div className="text-4xl mb-3">🏠</div>
@@ -310,4 +359,15 @@ export default async function SchemaPage({ searchParams }: PageProps) {
       </div>
     </div>
   )
+}
+
+function getWasteTypeBadgeClasses(type: WasteType): string {
+  if (type === 'restafval') return 'bg-slate-200 text-slate-800'
+  if (type === 'gft') return 'bg-green-100 text-green-800'
+  return 'bg-blue-100 text-blue-800'
+}
+
+function capitalizeFirst(value: string): string {
+  if (!value) return value
+  return value.charAt(0).toUpperCase() + value.slice(1)
 }

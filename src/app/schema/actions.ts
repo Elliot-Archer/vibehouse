@@ -5,6 +5,7 @@ import { cookies } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { getSessionUser } from '@/lib/session'
 import { createSupabaseServiceClient } from '@/lib/supabase-server'
+import { sendPushToUser } from '@/lib/push'
 
 async function createClient() {
   const cookieStore = await cookies()
@@ -65,6 +66,16 @@ export async function requestSwapAction(entryId: string, targetUserId: string) {
     .insert({ requester_id: profileId, target_id: targetUserId, entry_id: entryId, status: 'pending' })
 
   if (error) return { error: error.message }
+
+  // Notify the target that someone wants to swap with them.
+  const service = createSupabaseServiceClient()
+  const { data: requester } = await service.from('users').select('name').eq('id', profileId).single()
+  await sendPushToUser(service, targetUserId, {
+    title: '🔄 Ruilverzoek ontvangen',
+    body: `${requester?.name ?? 'Iemand'} wil een taak met je ruilen`,
+    url: '/schema',
+  })
+
   revalidatePath('/schema')
   revalidatePath('/ruilverzoeken')
   return { success: true }
@@ -90,16 +101,17 @@ export async function respondSwapAction(swapId: string, accept: boolean) {
 
   const { data: swap } = await supabase
     .from('swap_requests')
-    .select('target_id, entry_id')
+    .select('target_id, entry_id, requester_id')
     .eq('id', swapId)
     .single()
 
   if (!swap || swap.target_id !== profileId) return { error: 'Geen toegang' }
 
+  const service = createSupabaseServiceClient()
+
   if (accept) {
     // Transferring the entry to a new owner requires bypassing the
     // owner-only RLS update policy. Caller is verified as the swap target above.
-    const service = createSupabaseServiceClient()
     const { error: entryError } = await service
       .from('schedule_entries')
       .update({ user_id: profileId })
@@ -113,6 +125,19 @@ export async function respondSwapAction(swapId: string, accept: boolean) {
     .eq('id', swapId)
 
   if (error) return { error: error.message }
+
+  // Notify the original requester of the response.
+  const { data: responder } = await service.from('users').select('name').eq('id', profileId).single()
+  if (swap.requester_id) {
+    await sendPushToUser(service, swap.requester_id, {
+      title: accept ? '✅ Ruilverzoek geaccepteerd' : '❌ Ruilverzoek afgewezen',
+      body: accept
+        ? `${responder?.name ?? 'Iemand'} heeft je ruilverzoek geaccepteerd!`
+        : `${responder?.name ?? 'Iemand'} heeft je ruilverzoek afgewezen.`,
+      url: '/schema',
+    })
+  }
+
   revalidatePath('/schema')
   revalidatePath('/ruilverzoeken')
   return { success: true }

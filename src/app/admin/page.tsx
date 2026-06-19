@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { createSupabaseServerClient, createSupabaseServiceClient } from '@/lib/supabase-server'
 import { getSessionUser } from '@/lib/session'
 import AdminPanel from './AdminPanel'
 
@@ -24,13 +24,17 @@ export default async function AdminPage() {
     )
   }
 
+  // push_subscriptions is RLS-protected and the anon client returns nothing,
+  // so read subscription status with the service client.
+  const service = createSupabaseServiceClient()
+
   // Fetch initial data in parallel
   const [{ data: users }, { data: tasks }, { data: taskMembers }, { data: subs }] =
     await Promise.all([
       supabase.from('users').select('*').order('name'),
       supabase.from('tasks').select('*').order('name'),
       supabase.from('task_members').select('*').order('order'),
-      supabase.from('push_subscriptions').select('user_id'),
+      service.from('push_subscriptions').select('user_id'),
     ])
 
   const subscribedUserIds = [...new Set((subs || []).map((s) => s.user_id))]

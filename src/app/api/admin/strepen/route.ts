@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createSupabaseServiceClient } from '@/lib/supabase-server'
 import { isAdminRequest } from '@/lib/auth'
+import { sendPushToUser } from '@/lib/push'
 
 export async function POST(request: NextRequest) {
   if (!(await isAdminRequest())) {
@@ -21,7 +22,7 @@ export async function POST(request: NextRequest) {
   // Get current strepen
   const { data: user, error: fetchError } = await serviceClient
     .from('users')
-    .select('strepen')
+    .select('strepen, name')
     .eq('id', userId)
     .single()
 
@@ -44,6 +45,20 @@ export async function POST(request: NextRequest) {
       { error: updateError.message },
       { status: 500 }
     )
+  }
+
+  // Notify the user when they receive a streep. A push failure must never
+  // break the streep update itself.
+  if (delta > 0) {
+    try {
+      await sendPushToUser(serviceClient, userId, {
+        title: '➖ Je hebt een streep gekregen',
+        body: `Je staat nu op ${newStrepen} stre${newStrepen === 1 ? 'ep' : 'pen'}.`,
+        url: '/strepen',
+      })
+    } catch (e) {
+      console.error('Push (strepen) failed:', e)
+    }
   }
 
   return NextResponse.json({ strepen: newStrepen })

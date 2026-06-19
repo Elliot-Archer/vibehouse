@@ -84,6 +84,46 @@ export async function upsertWeekSchedule(
   if (upsertError) throw upsertError
 }
 
+// The waste task is not part of the rotation; it defaults to one person
+// (Elliot) each week but can be swapped like any other task.
+export const WASTE_TASK_NAME = 'Vuilnis'
+
+// Look up the waste task id by name.
+export async function getWasteTaskId(
+  supabaseClient: SupabaseClient
+): Promise<string | null> {
+  const { data } = await supabaseClient
+    .from('tasks')
+    .select('id')
+    .eq('name', WASTE_TASK_NAME)
+    .single()
+  return data?.id ?? null
+}
+
+// Ensure a waste schedule entry exists for the week, defaulting to the given
+// user. Existing entries (e.g. already swapped to someone else) are preserved.
+export async function ensureWasteEntry(
+  supabaseClient: SupabaseClient,
+  monday: Date,
+  defaultUserId: string
+): Promise<void> {
+  const taskId = await getWasteTaskId(supabaseClient)
+  if (!taskId) return
+
+  const { error } = await supabaseClient.from('schedule_entries').upsert(
+    [
+      {
+        task_id: taskId,
+        user_id: defaultUserId,
+        week: formatWeekDate(monday),
+        status: 'pending',
+      },
+    ],
+    { onConflict: 'task_id,week', ignoreDuplicates: true }
+  )
+  if (error) throw error
+}
+
 export async function reassignTaskFromWeek(
   supabaseClient: SupabaseClient,
   taskId: string,

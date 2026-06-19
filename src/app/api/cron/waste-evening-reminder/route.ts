@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createSupabaseServiceClient } from '@/lib/supabase-server'
 import { sendPushToUser } from '@/lib/push'
 import { getTomorrowWastePickups, getWasteTypeLabel } from '@/lib/waste'
+import { getMonday, formatWeekDate, getWasteTaskId } from '@/lib/schedule'
 
 export async function GET(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET
@@ -29,8 +30,28 @@ export async function GET(request: NextRequest) {
 
   const supabase = createSupabaseServiceClient()
 
+  // Send to whoever is responsible for waste this week (default Elliot).
+  let responsibleUserId = elliotUserId
   try {
-    await sendPushToUser(supabase, elliotUserId, {
+    const wasteTaskId = await getWasteTaskId(supabase)
+    if (wasteTaskId) {
+      const tomorrow = new Date()
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      const weekStr = formatWeekDate(getMonday(tomorrow))
+      const { data: entry } = await supabase
+        .from('schedule_entries')
+        .select('user_id')
+        .eq('task_id', wasteTaskId)
+        .eq('week', weekStr)
+        .single()
+      if (entry?.user_id) responsibleUserId = entry.user_id
+    }
+  } catch (_) {
+    // Fall back to Elliot.
+  }
+
+  try {
+    await sendPushToUser(supabase, responsibleUserId, {
       title: 'Vuilnis morgen',
       body: `Morgen wordt opgehaald: ${uniqueTypes.join(', ')}. Zet de container vanavond klaar.`,
       url: '/schema',

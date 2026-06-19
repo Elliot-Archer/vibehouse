@@ -20,7 +20,7 @@ export default async function StrepenPage() {
   if (!profile) redirect('/login')
 
   const adminIds = (process.env.ADMIN_USER_IDS ?? '').split(',').filter(Boolean)
-  const isAdmin = adminIds.includes(profile.id)
+  const isAdmin = adminIds.includes(session.id)
 
   // Fetch all users with their strepen
   const { data: users, error } = await supabase
@@ -35,7 +35,7 @@ export default async function StrepenPage() {
       .from('users')
       .select('id, name, email, avatar_url')
       .order('name')
-    userList = (usersWithoutStrepen || []).map((u: any) => ({
+    userList = (usersWithoutStrepen || []).map((u) => ({
       ...u,
       strepen: 0,
     }))

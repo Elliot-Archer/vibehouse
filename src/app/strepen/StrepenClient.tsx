@@ -49,7 +49,9 @@ export default function StrepenClient({ users, isAdmin }: StrepenClientProps) {
 
   // Sort by strepen (descending) and then by name
   const sorted = [...userList].sort((a, b) => {
-    if (b.strepen !== a.strepen) return b.strepen - a.strepen
+    const bs = b.strepen ?? 0
+    const as = a.strepen ?? 0
+    if (bs !== as) return bs - as
     return a.name.localeCompare(b.name)
   })
 
@@ -87,14 +89,14 @@ export default function StrepenClient({ users, isAdmin }: StrepenClientProps) {
             <div className="flex items-center gap-2 flex-shrink-0">
               <div
                 className={`text-2xl font-bold ${
-                  user.strepen > 3
+                  (user.strepen ?? 0) > 3
                     ? 'text-red-600'
-                    : user.strepen > 0
+                    : (user.strepen ?? 0) > 0
                       ? 'text-orange-600'
                       : 'text-slate-400'
                 }`}
               >
-                {user.strepen}
+                {user.strepen ?? 0}
               </div>
 
               {isAdmin && (

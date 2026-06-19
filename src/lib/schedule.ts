@@ -83,3 +83,69 @@ export async function upsertWeekSchedule(
 
   if (upsertError) throw upsertError
 }
+
+export async function reassignTaskFromWeek(
+  supabaseClient: SupabaseClient,
+  taskId: string,
+  startMonday: Date,
+  weeksAhead = 52
+): Promise<void> {
+  const { data: members, error: membersError } = await supabaseClient
+    .from('task_members')
+    .select('task_id, user_id, order')
+    .eq('task_id', taskId)
+    .order('order')
+
+  if (membersError) throw membersError
+  if (!members || members.length === 0) {
+    throw new Error('Geen taakleden gevonden voor deze taak')
+  }
+
+  const endMonday = new Date(startMonday)
+  endMonday.setDate(endMonday.getDate() + (weeksAhead - 1) * 7)
+
+  const { data: existing, error: existingError } = await supabaseClient
+    .from('schedule_entries')
+    .select('task_id, week, status')
+    .eq('task_id', taskId)
+    .gte('week', formatWeekDate(startMonday))
+    .lte('week', formatWeekDate(endMonday))
+
+  if (existingError) throw existingError
+
+  const existingByWeek = new Map<string, { status: 'pending' | 'done' }>()
+  for (const entry of existing || []) {
+    existingByWeek.set(entry.week, { status: entry.status as 'pending' | 'done' })
+  }
+
+  const entries = []
+  for (let i = 0; i < weeksAhead; i++) {
+    const weekDate = new Date(startMonday)
+    weekDate.setDate(startMonday.getDate() + i * 7)
+    const week = formatWeekDate(weekDate)
+
+    const existingEntry = existingByWeek.get(week)
+    if (existingEntry?.status === 'done') {
+      // Behoud afgeronde taken zoals ze zijn.
+      continue
+    }
+
+    entries.push({
+      task_id: taskId,
+      user_id: members[i % members.length].user_id,
+      week,
+      status: existingEntry?.status ?? 'pending',
+    })
+  }
+
+  if (entries.length === 0) return
+
+  const { error: upsertError } = await supabaseClient
+    .from('schedule_entries')
+    .upsert(entries, {
+      onConflict: 'task_id,week',
+      ignoreDuplicates: false,
+    })
+
+  if (upsertError) throw upsertError
+}

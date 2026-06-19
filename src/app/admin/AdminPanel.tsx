@@ -17,7 +17,7 @@ export default function AdminPanel({
   const [users, setUsers] = useState<User[]>(initialUsers)
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
   const [taskMembers, setTaskMembers] = useState<TaskMember[]>(initialTaskMembers)
-  const [activeTab, setActiveTab] = useState<'users' | 'tasks' | 'members' | 'schema' | 'push'>('users')
+  const [activeTab, setActiveTab] = useState<'users' | 'tasks' | 'members' | 'push'>('users')
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   // Push notification testing
@@ -36,6 +36,8 @@ export default function AdminPanel({
   // Task members
   const [selectedTaskId, setSelectedTaskId] = useState<string>('')
   const [membersLoading, setMembersLoading] = useState(false)
+  const [regenerateLoading, setRegenerateLoading] = useState(false)
+  const [effectiveFrom, setEffectiveFrom] = useState<'this-week' | 'next-week'>('this-week')
 
   // Delete loading guards
   const [removingUserId, setRemovingUserId] = useState<string | null>(null)
@@ -179,13 +181,23 @@ export default function AdminPanel({
     setMembersLoading(false)
   }
 
-  async function regenerateSchema() {
-    const res = await fetch('/api/admin/regenerate-schedule', { method: 'POST' })
+  async function regenerateSchemaForTask() {
+    if (!selectedTaskId) return
+    setRegenerateLoading(true)
+
+    const res = await fetch('/api/admin/regenerate-schedule', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ taskId: selectedTaskId, effectiveFrom }),
+    })
+
     if (res.ok) {
-      showMessage('success', 'Schema opnieuw gegenereerd!')
+      showMessage('success', 'Schema voor deze taak opnieuw gegenereerd!')
     } else {
       showMessage('error', 'Fout bij genereren — probeer het opnieuw')
     }
+
+    setRegenerateLoading(false)
   }
 
   async function sendTestNotifications() {
@@ -216,7 +228,6 @@ export default function AdminPanel({
     { key: 'users', label: 'Huisgenoten' },
     { key: 'tasks', label: 'Taken' },
     { key: 'members', label: 'Taakverdeling' },
-    { key: 'schema', label: 'Schema' },
     { key: 'push', label: 'Notificaties' },
   ] as const
 
@@ -384,6 +395,7 @@ export default function AdminPanel({
               <select
                 value={selectedTaskId}
                 onChange={(e) => setSelectedTaskId(e.target.value)}
+                aria-label="Selecteer taak"
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 <option value="">-- Kies een taak --</option>
@@ -467,25 +479,46 @@ export default function AdminPanel({
                       </button>
                     ))}
                 </div>
+
+                <div className="mt-5 border-t border-slate-200 pt-4">
+                  <h4 className="text-sm font-semibold text-slate-900 mb-1">
+                    Schema voor deze taak
+                  </h4>
+                  <p className="text-xs text-slate-500 mb-3">
+                    Past alleen deze taak aan vanaf het gekozen moment. Eerdere weken blijven ongewijzigd.
+                  </p>
+
+                  <div className="flex items-center gap-3 mb-3">
+                    <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+                      <input
+                        type="radio"
+                        name="effective-from"
+                        checked={effectiveFrom === 'this-week'}
+                        onChange={() => setEffectiveFrom('this-week')}
+                      />
+                      M.i.v. deze week
+                    </label>
+                    <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+                      <input
+                        type="radio"
+                        name="effective-from"
+                        checked={effectiveFrom === 'next-week'}
+                        onChange={() => setEffectiveFrom('next-week')}
+                      />
+                      M.i.v. volgende week
+                    </label>
+                  </div>
+
+                  <button
+                    onClick={regenerateSchemaForTask}
+                    disabled={regenerateLoading || membersLoading || getMembersForTask(selectedTaskId).length === 0}
+                    className="btn-primary"
+                  >
+                    {regenerateLoading ? 'Genereren...' : 'Schema genereren voor deze taak'}
+                  </button>
+                </div>
               </div>
             )}
-          </div>
-        )}
-
-        {/* Schema tab */}
-        {activeTab === 'schema' && (
-          <div className="card">
-            <h3 className="font-semibold text-sm text-slate-900 mb-2">
-              Schema opnieuw genereren
-            </h3>
-            <p className="text-xs text-slate-500 mb-4">
-              Genereer het schema voor de huidige week opnieuw op basis van de
-              huidige taakverdeling. Bestaande taken die al als &apos;klaar&apos; zijn
-              gemarkeerd blijven ongewijzigd.
-            </p>
-            <button onClick={regenerateSchema} className="btn-primary">
-              Schema genereren
-            </button>
           </div>
         )}
 

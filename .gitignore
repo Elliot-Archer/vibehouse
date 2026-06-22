@@ -15,3 +15,6 @@ out/
 # Vercel
 .vercel
 .env*
+
+# TypeScript build cache
+tsconfig.tsbuildinfo

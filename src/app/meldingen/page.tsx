@@ -1,10 +1,21 @@
 import { redirect } from 'next/navigation'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
+import Link from 'next/link'
+import { createSupabaseServerClient, createSupabaseServiceClient } from '@/lib/supabase-server'
 import { getSessionUser } from '@/lib/session'
-import type { SwapRequest, User, Task, ScheduleEntry } from '@/types'
-import SwapResponseButtons from '../schema/SwapResponseButtons'
-import { format } from 'date-fns'
+import type { User } from '@/types'
+import type { NotificationRow, NotificationType } from '@/lib/notifications'
+import { formatDistanceToNow } from 'date-fns'
 import { nl } from 'date-fns/locale'
+
+const TYPE_ICON: Record<NotificationType, string> = {
+  swap_request: '🔄',
+  swap_accepted: '✅',
+  swap_declined: '❌',
+  poke: '👉',
+  streep: '➖',
+  weekly_reminder: '🔔',
+  waste_reminder: '🗑️',
+}
 
 export default async function MeldingenPage() {
   const supabase = await createSupabaseServerClient()
@@ -14,122 +25,83 @@ export default async function MeldingenPage() {
 
   const { data: profile } = await supabase
     .from('users')
-    .select('*')
+    .select('id')
     .eq('email', session.email)
     .single()
 
   if (!profile) redirect('/login')
 
-  // Fetch sent and received swap requests in parallel
-  const [{ data: sent }, { data: received }] = await Promise.all([
-    supabase
-      .from('swap_requests')
-      .select('*')
-      .eq('requester_id', profile.id)
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('swap_requests')
-      .select('*')
-      .eq('target_id', profile.id)
-      .order('created_at', { ascending: false }),
-  ])
-
-  // Fetch related data
-  const allSwaps = [...(sent || []), ...(received || [])]
-  const entryIds = allSwaps.map((s) => s.entry_id)
-  const { data: entries } = await supabase
-    .from('schedule_entries')
+  // Notifications are read via the service client (RLS denies anon access);
+  // we only ever read this user's own feed.
+  const service = createSupabaseServiceClient()
+  const { data: notifications } = await service
+    .from('notifications')
     .select('*')
-    .in('id', entryIds.length > 0 ? entryIds : ['none'])
+    .eq('user_id', profile.id)
+    .order('created_at', { ascending: false })
 
-  const taskIds = (entries || []).map((e: ScheduleEntry) => e.task_id)
-  const { data: tasks } = await supabase
-    .from('tasks')
-    .select('*')
-    .in('id', taskIds.length > 0 ? taskIds : ['none'])
+  const rows = (notifications || []) as NotificationRow[]
 
-  const userIds = [
-    ...new Set(allSwaps.flatMap((s) => [s.requester_id, s.target_id])),
-  ]
-  const { data: users } = await supabase
+  // Fetch actor users for avatars/names.
+  const actorIds = [...new Set(rows.map((n) => n.actor_id).filter(Boolean))] as string[]
+  const { data: actors } = await service
     .from('users')
-    .select('*')
-    .in('id', userIds.length > 0 ? userIds : ['none'])
+    .select('id, name, avatar_url')
+    .in('id', actorIds.length > 0 ? actorIds : ['none'])
 
-  const entryMap = new Map<string, ScheduleEntry>(
-    (entries || []).map((e: ScheduleEntry) => [e.id, e])
-  )
-  const taskMap = new Map<string, Task>(
-    (tasks || []).map((t: Task) => [t.id, t])
-  )
-  const userMap = new Map<string, User>(
-    (users || []).map((u: User) => [u.id, u])
+  const actorMap = new Map<string, Pick<User, 'id' | 'name' | 'avatar_url'>>(
+    (actors || []).map((u) => [u.id, u])
   )
 
-  // Separate incoming (received) and outgoing (sent)
-  const incomingPending = (received || []).filter((s) => s.status === 'pending')
-  const outgoingPending = (sent || []).filter((s) => s.status === 'pending')
-  const otherPending = allSwaps.filter(
-    (s) => s.status !== 'pending' && s.status !== 'accepted' && s.status !== 'declined'
-  )
+  const incoming = rows.filter((n) => n.direction === 'incoming')
+  const outgoing = rows.filter((n) => n.direction === 'outgoing')
 
-  function NotificationCard({
-    swap,
-    isIncoming,
-  }: {
-    swap: SwapRequest
-    isIncoming: boolean
-  }) {
-    const entry = entryMap.get(swap.entry_id)
-    const task = entry ? taskMap.get(entry.task_id) : null
-    const otherUserId = isIncoming ? swap.requester_id : swap.target_id
-    const otherUser = userMap.get(otherUserId)
+  function NotificationItem({ n }: { n: NotificationRow }) {
+    const actor = n.actor_id ? actorMap.get(n.actor_id) : null
+    const when = (() => {
+      try {
+        return formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: nl })
+      } catch {
+        return ''
+      }
+    })()
 
-    const weekLabel = entry
-      ? format(new Date(entry.week + 'T00:00:00Z'), 'd MMM yyyy', { locale: nl })
-      : 'Onbekende week'
-
-    return (
-      <div className="card">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <p className="font-medium text-sm text-slate-900">
-              {task?.name || 'Onbekende taak'}
-            </p>
-            <p className="text-xs text-slate-500 mt-0.5">Week van {weekLabel}</p>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {isIncoming
-                ? `Ruilverzoek van: ${otherUser?.name || 'Onbekend'}`
-                : `Ruilverzoek naar: ${otherUser?.name || 'Onbekend'}`}
-            </p>
-          </div>
-          <div className="flex-shrink-0 text-right">
-            {swap.status === 'pending' && (
-              <span className="badge bg-amber-100 text-amber-700 text-xs font-medium">
-                Openstaand
-              </span>
-            )}
-            {swap.status === 'accepted' && (
-              <span className="badge bg-green-100 text-green-700 text-xs font-medium">
-                Geaccepteerd
-              </span>
-            )}
-            {swap.status === 'declined' && (
-              <span className="badge bg-red-100 text-red-700 text-xs font-medium">
-                Afgewezen
-              </span>
-            )}
-          </div>
-        </div>
-        {swap.status === 'pending' && isIncoming && entry && (
-          <SwapResponseButtons
-            swapId={swap.id}
-            entryId={swap.entry_id}
-            requesterId={swap.requester_id}
-            currentUserId={profile.id}
-          />
+    const inner = (
+      <div className="card flex items-start gap-3">
+        {actor ? (
+          actor.avatar_url ? (
+            <img
+              src={actor.avatar_url}
+              alt={actor.name}
+              className="w-10 h-10 rounded-xl object-cover border border-slate-200 flex-shrink-0"
+            />
+          ) : (
+            <span className="w-10 h-10 rounded-xl bg-secondary-100 text-secondary-600 text-sm font-bold flex items-center justify-center flex-shrink-0 border border-secondary-200">
+              {actor.name.charAt(0).toUpperCase()}
+            </span>
+          )
+        ) : (
+          <span className="w-10 h-10 rounded-xl bg-primary-100 text-lg flex items-center justify-center flex-shrink-0 border border-primary-200">
+            {TYPE_ICON[n.type] ?? '🔔'}
+          </span>
         )}
+
+        <div className="flex-1 min-w-0">
+          <p className="text-sm text-slate-800 leading-snug">
+            <span className="mr-1">{TYPE_ICON[n.type] ?? '🔔'}</span>
+            {n.body}
+          </p>
+          {when && <p className="text-xs text-slate-400 mt-1">{when}</p>}
+        </div>
       </div>
+    )
+
+    return n.url ? (
+      <Link href={n.url} className="block">
+        {inner}
+      </Link>
+    ) : (
+      inner
     )
   }
 
@@ -146,80 +118,58 @@ export default async function MeldingenPage() {
             <p className="text-primary-400 text-xs font-semibold uppercase tracking-widest">
               Meldingen
             </p>
-            <h1 className="text-2xl font-bold text-white leading-tight">
-              Tjokkellust
-            </h1>
+            <h1 className="text-2xl font-bold text-white leading-tight">Tjokkellust</h1>
           </div>
         </div>
       </header>
 
       <div className="flex-1 px-4 py-4 space-y-6">
-        {incomingPending.length === 0 && outgoingPending.length === 0 ? (
+        {rows.length === 0 ? (
           <div className="text-center py-16">
             <div className="text-4xl mb-3">🔔</div>
-            <p className="text-slate-500 text-sm">Geen openstaande ruilverzoeken.</p>
+            <p className="text-slate-500 text-sm">Nog geen meldingen deze week.</p>
           </div>
         ) : (
           <>
-            {/* Incoming requests */}
-            {incomingPending.length > 0 && (
-              <section>
-                <h2 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
-                  <span>📥 Inkomend</span>
+            <section>
+              <h2 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                <span>📥 Inkomend</span>
+                {incoming.length > 0 && (
                   <span className="badge bg-amber-100 text-amber-700 text-xs font-bold">
-                    {incomingPending.length}
+                    {incoming.length}
                   </span>
-                </h2>
+                )}
+              </h2>
+              {incoming.length === 0 ? (
+                <p className="text-xs text-slate-400">Geen inkomende meldingen.</p>
+              ) : (
                 <div className="space-y-3">
-                  {incomingPending.map((s) => (
-                    <NotificationCard key={s.id} swap={s} isIncoming={true} />
+                  {incoming.map((n) => (
+                    <NotificationItem key={n.id} n={n} />
                   ))}
                 </div>
-              </section>
-            )}
+              )}
+            </section>
 
-            {/* Outgoing requests */}
-            {outgoingPending.length > 0 && (
-              <section>
-                <h2 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
-                  <span>📤 Verzonden</span>
+            <section>
+              <h2 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                <span>📤 Uitgaand</span>
+                {outgoing.length > 0 && (
                   <span className="badge bg-blue-100 text-blue-700 text-xs font-bold">
-                    {outgoingPending.length}
+                    {outgoing.length}
                   </span>
-                </h2>
+                )}
+              </h2>
+              {outgoing.length === 0 ? (
+                <p className="text-xs text-slate-400">Geen uitgaande meldingen.</p>
+              ) : (
                 <div className="space-y-3">
-                  {outgoingPending.map((s) => (
-                    <NotificationCard key={s.id} swap={s} isIncoming={false} />
+                  {outgoing.map((n) => (
+                    <NotificationItem key={n.id} n={n} />
                   ))}
                 </div>
-              </section>
-            )}
-
-            {/* Completed requests */}
-            {(allSwaps.filter((s) =>
-              ['accepted', 'declined'].includes(s.status)
-            ).length > 0) && (
-              <section>
-                <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
-                  Afgerond ({allSwaps.filter((s) =>
-                    ['accepted', 'declined'].includes(s.status)
-                  ).length})
-                </h2>
-                <div className="space-y-3">
-                  {allSwaps
-                    .filter((s) =>
-                      ['accepted', 'declined'].includes(s.status)
-                    )
-                    .map((s) => (
-                      <NotificationCard
-                        key={s.id}
-                        swap={s}
-                        isIncoming={s.target_id === profile.id}
-                      />
-                    ))}
-                </div>
-              </section>
-            )}
+              )}
+            </section>
           </>
         )}
       </div>

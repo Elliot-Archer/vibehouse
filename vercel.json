@@ -1,6 +1,10 @@
 {
   "crons": [
     {
+      "path": "/api/cron/clear-notifications",
+      "schedule": "0 6 * * 1"
+    },
+    {
       "path": "/api/cron/weekly-reminder",
       "schedule": "0 7 * * 1"
     },

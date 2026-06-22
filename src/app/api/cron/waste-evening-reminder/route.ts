@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createSupabaseServiceClient } from '@/lib/supabase-server'
 import { sendPushToUser } from '@/lib/push'
+import { createNotifications } from '@/lib/notifications'
 import { getTomorrowWastePickups, getWasteTypeLabel } from '@/lib/waste'
 import { getMonday, formatWeekDate, getWasteTaskId } from '@/lib/schedule'
 
@@ -51,6 +52,16 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    await createNotifications(supabase, [
+      {
+        userId: responsibleUserId,
+        direction: 'incoming',
+        type: 'waste_reminder',
+        actorId: null,
+        body: `Vuilnis: morgen wordt opgehaald: ${uniqueTypes.join(', ')}`,
+        url: '/schema',
+      },
+    ])
     await sendPushToUser(supabase, responsibleUserId, {
       title: 'Vuilnis morgen',
       body: `Morgen wordt opgehaald: ${uniqueTypes.join(', ')}. Zet de container vanavond klaar.`,

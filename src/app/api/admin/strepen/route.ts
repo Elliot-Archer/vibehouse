@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createSupabaseServiceClient } from '@/lib/supabase-server'
 import { isAdminRequest } from '@/lib/auth'
 import { sendPushToUser } from '@/lib/push'
+import { createNotifications } from '@/lib/notifications'
 
 export async function POST(request: NextRequest) {
   if (!(await isAdminRequest())) {
@@ -47,13 +48,24 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // Notify the user when they receive a streep. A push failure must never
-  // break the streep update itself.
+  // Notify the user when they receive a streep, and record it in their feed.
+  // A push/notification failure must never break the streep update itself.
   if (delta > 0) {
+    const strepenLabel = `${newStrepen} stre${newStrepen === 1 ? 'ep' : 'pen'}`
     try {
+      await createNotifications(serviceClient, [
+        {
+          userId,
+          direction: 'incoming',
+          type: 'streep',
+          actorId: null,
+          body: `Je hebt een streep gekregen — je staat nu op ${strepenLabel}`,
+          url: '/strepen',
+        },
+      ])
       await sendPushToUser(serviceClient, userId, {
         title: '➖ Je hebt een streep gekregen',
-        body: `Je staat nu op ${newStrepen} stre${newStrepen === 1 ? 'ep' : 'pen'}.`,
+        body: `Je staat nu op ${strepenLabel}.`,
         url: '/strepen',
       })
     } catch (e) {

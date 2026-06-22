@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createSupabaseServiceClient } from '@/lib/supabase-server'
 import { getCurrentMonday, upsertWeekSchedule, formatWeekDate } from '@/lib/schedule'
 import { sendPushToUser } from '@/lib/push'
+import { createNotifications } from '@/lib/notifications'
 import type { ScheduleEntry, Task } from '@/types'
 
 export async function GET(request: NextRequest) {
@@ -49,9 +50,20 @@ export async function GET(request: NextRequest) {
 
   const serviceSupabase = supabase
   const results = await Promise.allSettled(
-    (entries as ScheduleEntry[]).map((entry) => {
+    (entries as ScheduleEntry[]).map(async (entry) => {
       const task = taskMap.get(entry.task_id)
-      if (!task) return Promise.reject(new Error('Task not found'))
+      if (!task) throw new Error('Task not found')
+
+      await createNotifications(serviceSupabase, [
+        {
+          userId: entry.user_id,
+          direction: 'incoming',
+          type: 'weekly_reminder',
+          actorId: null,
+          body: `Herinnering: vergeet je taak "${task.name}" niet`,
+          url: '/schema',
+        },
+      ])
 
       return sendPushToUser(serviceSupabase, entry.user_id, {
         title: 'Tjokkellust',

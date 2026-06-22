@@ -8,6 +8,7 @@ import { createSupabaseServiceClient } from '@/lib/supabase-server'
 import type { Task, User, ScheduleEntry, SwapRequest } from '@/types'
 import MarkDoneButton from './MarkDoneButton'
 import SwapButton from './SwapButton'
+import PokeButton from './PokeButton'
 import SwapResponseButtons from './SwapResponseButtons'
 import PushSubscriber from './PushSubscriber'
 import { format, addDays } from 'date-fns'
@@ -353,6 +354,13 @@ export default async function SchemaPage({ searchParams }: PageProps) {
                   )}
                 </div>
               )}
+
+              {/* Poke whoever is responsible for the waste task */}
+              {wasteEntry && !wasteIsMe && wasteEntry.status !== 'done' && (
+                <div className="flex flex-col gap-1.5 flex-shrink-0">
+                  <PokeButton entryId={wasteEntry.id} />
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -456,6 +464,13 @@ export default async function SchemaPage({ searchParams }: PageProps) {
                         existingSwapId={wt.outgoingSwap.id}
                       />
                     )}
+                  </div>
+                )}
+
+                {/* Poke another housemate to do their task */}
+                {!wt.isMe && wt.entry.status !== 'done' && (
+                  <div className="flex flex-col gap-1.5 flex-shrink-0">
+                    <PokeButton entryId={wt.entry.id} />
                   </div>
                 )}
               </div>

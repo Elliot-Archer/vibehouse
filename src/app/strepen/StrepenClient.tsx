@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { User } from '@/types'
+import Avatar from '../Avatar'
 
 interface StrepenClientProps {
   users: User[]
@@ -70,17 +71,12 @@ export default function StrepenClient({ users, isAdmin }: StrepenClientProps) {
             className="card flex items-center justify-between gap-3"
           >
             <div className="flex items-center gap-3 flex-1 min-w-0">
-              {user.avatar_url ? (
-                <img
-                  src={user.avatar_url}
-                  alt={user.name}
-                  className="w-10 h-10 rounded-full object-cover flex-shrink-0"
-                />
-              ) : (
-                <span className="w-10 h-10 rounded-full bg-secondary-100 text-secondary-600 font-bold flex items-center justify-center flex-shrink-0 text-sm">
-                  {user.name.charAt(0).toUpperCase()}
-                </span>
-              )}
+              <Avatar
+                name={user.name}
+                src={user.avatar_url}
+                className="w-10 h-10 rounded-full"
+                fallbackClassName="bg-secondary-100 text-secondary-600 text-sm"
+              />
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-slate-900 text-sm">{user.name}</p>
               </div>

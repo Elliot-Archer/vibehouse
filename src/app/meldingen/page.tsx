@@ -6,6 +6,7 @@ import type { User } from '@/types'
 import type { NotificationRow, NotificationType } from '@/lib/notifications'
 import { formatDistanceToNow } from 'date-fns'
 import { nl } from 'date-fns/locale'
+import Avatar from '../Avatar'
 
 const TYPE_ICON: Record<NotificationType, string> = {
   swap_request: '🔄',
@@ -69,17 +70,12 @@ export default async function MeldingenPage() {
     const inner = (
       <div className="card flex items-start gap-3">
         {actor ? (
-          actor.avatar_url ? (
-            <img
-              src={actor.avatar_url}
-              alt={actor.name}
-              className="w-10 h-10 rounded-xl object-cover border border-slate-200 flex-shrink-0"
-            />
-          ) : (
-            <span className="w-10 h-10 rounded-xl bg-secondary-100 text-secondary-600 text-sm font-bold flex items-center justify-center flex-shrink-0 border border-secondary-200">
-              {actor.name.charAt(0).toUpperCase()}
-            </span>
-          )
+          <Avatar
+            name={actor.name}
+            src={actor.avatar_url}
+            className="w-10 h-10 rounded-xl border border-slate-200"
+            fallbackClassName="bg-secondary-100 text-secondary-600 text-sm border border-secondary-200"
+          />
         ) : (
           <span className="w-10 h-10 rounded-xl bg-primary-100 text-lg flex items-center justify-center flex-shrink-0 border border-primary-200">
             {TYPE_ICON[n.type] ?? '🔔'}

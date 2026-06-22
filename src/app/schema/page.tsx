@@ -11,6 +11,7 @@ import SwapButton from './SwapButton'
 import PokeButton from './PokeButton'
 import SwapResponseButtons from './SwapResponseButtons'
 import PushSubscriber from './PushSubscriber'
+import Avatar from '../Avatar'
 import { format, addDays } from 'date-fns'
 import { nl } from 'date-fns/locale'
 import {
@@ -263,17 +264,12 @@ export default async function SchemaPage({ searchParams }: PageProps) {
           <div className={`card border-emerald-200 bg-emerald-50/50 ${wasteIsMe ? 'ring-1 ring-primary-200' : ''}`}>
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-3 min-w-0 flex-1">
-                {wasteUser?.avatar_url ? (
-                  <img
-                    src={wasteUser.avatar_url}
-                    alt={wasteUser.name}
-                    className="w-11 h-11 rounded-xl object-cover border border-slate-200 flex-shrink-0"
-                  />
-                ) : (
-                  <span className="w-11 h-11 rounded-xl bg-secondary-100 text-secondary-600 text-base font-bold flex items-center justify-center flex-shrink-0 border border-secondary-200">
-                    {(wasteUser?.name || 'V').charAt(0).toUpperCase()}
-                  </span>
-                )}
+                <Avatar
+                  name={wasteUser?.name || 'Vuilnis'}
+                  src={wasteUser?.avatar_url}
+                  className="w-11 h-11 rounded-xl border border-slate-200"
+                  fallbackClassName="bg-secondary-100 text-secondary-600 text-base border border-secondary-200"
+                />
 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -380,17 +376,12 @@ export default async function SchemaPage({ searchParams }: PageProps) {
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3 flex-1 min-w-0">
-                  {wt.assignedUser.avatar_url ? (
-                    <img
-                      src={wt.assignedUser.avatar_url}
-                      alt={wt.assignedUser.name}
-                      className="w-11 h-11 rounded-xl object-cover border border-slate-200 flex-shrink-0"
-                    />
-                  ) : (
-                    <span className="w-11 h-11 rounded-xl bg-secondary-100 text-secondary-600 text-base font-bold flex items-center justify-center flex-shrink-0 border border-secondary-200">
-                      {wt.assignedUser.name.charAt(0).toUpperCase()}
-                    </span>
-                  )}
+                  <Avatar
+                    name={wt.assignedUser.name}
+                    src={wt.assignedUser.avatar_url}
+                    className="w-11 h-11 rounded-xl border border-slate-200"
+                    fallbackClassName="bg-secondary-100 text-secondary-600 text-base border border-secondary-200"
+                  />
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">

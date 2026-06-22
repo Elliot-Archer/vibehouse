@@ -52,22 +52,30 @@ export default async function RootLayout({
           <main className="flex-1 pb-20">{children}</main>
 
           {user && (
-            <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 pb-safe z-50">
-              <div className="max-w-md mx-auto flex items-center justify-around h-16">
-                <NavItem href="/schema" label="Schema" icon={<CalendarIcon />} />
-                <NavItem
-                  href="/ruilverzoeken"
-                  label="Ruilen"
-                  icon={<SwapIcon />}
-                />
-                <NavItem href="/strepen" label="Strepen" icon={<StrepenIcon />} />
-                <NavItem href="/meldingen" label="Meldingen" icon={<BellIcon />} />
-                <NavItem href="/wachtwoord" label="Profiel" icon={<ProfileIcon />} />
-                {isAdmin && (
-                  <NavItem href="/admin" label="Beheer" icon={<AdminIcon />} />
-                )}
-              </div>
-            </nav>
+            <>
+              <Link
+                href="/meldingen"
+                className="fixed top-4 right-4 z-[60] w-9 h-9 bg-primary-400 rounded-full flex items-center justify-center shadow-lg hover:bg-primary-300 transition-colors"
+                aria-label="Meldingen"
+              >
+                <BellIcon />
+              </Link>
+              <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 pb-safe z-50">
+                <div className="max-w-md mx-auto flex items-center justify-around h-16">
+                  <NavItem href="/schema" label="Schema" icon={<CalendarIcon />} />
+                  <NavItem
+                    href="/ruilverzoeken"
+                    label="Ruilen"
+                    icon={<SwapIcon />}
+                  />
+                  <NavItem href="/strepen" label="Strepen" icon={<StrepenIcon />} />
+                  <NavItem href="/wachtwoord" label="Profiel" icon={<ProfileIcon />} />
+                  {isAdmin && (
+                    <NavItem href="/admin" label="Beheer" icon={<AdminIcon />} />
+                  )}
+                </div>
+              </nav>
+            </>
           )}
         </div>
 
@@ -213,17 +221,11 @@ function StrepenIcon() {
 function BellIcon() {
   return (
     <svg
-      className="w-6 h-6"
-      fill="none"
-      stroke="currentColor"
+      className="w-4 h-4"
+      fill="currentColor"
       viewBox="0 0 24 24"
     >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M15 17h5l-1.405-1.405A2.032 2.032 0 0018 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-      />
+      <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
     </svg>
   )
 }

@@ -89,7 +89,7 @@ export default function SwapButton({
             className="absolute inset-0 bg-black/40"
             onClick={() => setOpen(false)}
           />
-          <div className="relative bg-white rounded-t-2xl w-full max-w-md p-6 pb-8">
+          <div className="relative bg-white rounded-t-2xl w-full max-w-md p-6 pb-8 flex flex-col max-h-[85vh]">
             <h3 className="text-lg font-semibold text-slate-900 mb-1">
               Ruilverzoek sturen
             </h3>
@@ -103,16 +103,25 @@ export default function SwapButton({
               </div>
             )}
 
-            <div className="space-y-2">
+            <div className="space-y-2 overflow-y-auto flex-1 -mx-1 px-1">
               {housemates.map((mate) => (
                 <button
                   key={mate.id}
                   onClick={() => handleRequest(mate.id, mate.name)}
                   className="w-full flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:border-secondary-400 hover:bg-secondary-50 transition-colors text-left"
                 >
-                  <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-secondary-700 font-semibold text-sm flex-shrink-0">
-                    {mate.name.charAt(0).toUpperCase()}
-                  </div>
+                  {mate.avatar_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={mate.avatar_url}
+                      alt={mate.name}
+                      className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-secondary-700 font-semibold text-sm flex-shrink-0">
+                      {mate.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
                   <span className="text-sm font-medium text-slate-800">
                     {mate.name}
                   </span>
@@ -122,7 +131,7 @@ export default function SwapButton({
 
             <button
               onClick={() => setOpen(false)}
-              className="mt-4 w-full text-sm text-slate-500 hover:text-slate-700 py-2"
+              className="mt-4 w-full text-sm text-slate-500 hover:text-slate-700 py-2 flex-shrink-0"
             >
               Annuleren
             </button>

@@ -60,6 +60,7 @@ export default async function RootLayout({
                   label="Ruilen"
                   icon={<SwapIcon />}
                 />
+                <NavItem href="/strepen" label="Strepen" icon={<StrepenIcon />} />
                 <NavItem href="/meldingen" label="Meldingen" icon={<BellIcon />} />
                 <NavItem href="/wachtwoord" label="Profiel" icon={<ProfileIcon />} />
                 {isAdmin && (
@@ -186,6 +187,24 @@ function AdminIcon() {
         strokeLinejoin="round"
         strokeWidth={2}
         d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+      />
+    </svg>
+  )
+}
+
+function StrepenIcon() {
+  return (
+    <svg
+      className="w-6 h-6"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
       />
     </svg>
   )

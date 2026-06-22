@@ -13,16 +13,16 @@ export async function sendPushToUser(
   supabaseClient: SupabaseClient,
   userId: string,
   payload: { title: string; body: string; url?: string }
-): Promise<void> {
+): Promise<number> {
   const { data: subscriptions, error } = await supabaseClient
     .from('push_subscriptions')
     .select('subscription')
     .eq('user_id', userId)
 
-  if (error || !subscriptions) return
+  if (error || !subscriptions || subscriptions.length === 0) return 0
 
   initWebPush()
-  await Promise.allSettled(
+  const results = await Promise.allSettled(
     subscriptions.map((row) =>
       webpush.sendNotification(
         row.subscription as webpush.PushSubscription,
@@ -30,6 +30,8 @@ export async function sendPushToUser(
       )
     )
   )
+  // Number of subscriptions the push service accepted.
+  return results.filter((r) => r.status === 'fulfilled').length
 }
 
 export { webpush }

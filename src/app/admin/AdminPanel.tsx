@@ -7,21 +7,25 @@ interface AdminPanelProps {
   initialUsers: User[]
   initialTasks: Task[]
   initialTaskMembers: TaskMember[]
+  subscribedUserIds: string[]
 }
 
 export default function AdminPanel({
   initialUsers,
   initialTasks,
   initialTaskMembers,
+  subscribedUserIds,
 }: AdminPanelProps) {
   const [users, setUsers] = useState<User[]>(initialUsers)
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
   const [taskMembers, setTaskMembers] = useState<TaskMember[]>(initialTaskMembers)
-  const [activeTab, setActiveTab] = useState<'users' | 'tasks' | 'members' | 'schema' | 'push'>('users')
+  const [activeTab, setActiveTab] = useState<'users' | 'tasks' | 'members' | 'push'>('users')
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   // Push notification testing
   const [pushLoading, setPushLoading] = useState(false)
+  const [testingUserId, setTestingUserId] = useState<string | null>(null)
+  const subscribedSet = new Set(subscribedUserIds)
 
   // User management
   const [newUserName, setNewUserName] = useState('')
@@ -36,6 +40,8 @@ export default function AdminPanel({
   // Task members
   const [selectedTaskId, setSelectedTaskId] = useState<string>('')
   const [membersLoading, setMembersLoading] = useState(false)
+  const [regenerateLoading, setRegenerateLoading] = useState(false)
+  const [effectiveFrom, setEffectiveFrom] = useState<'this-week' | 'next-week'>('this-week')
 
   // Delete loading guards
   const [removingUserId, setRemovingUserId] = useState<string | null>(null)
@@ -179,33 +185,81 @@ export default function AdminPanel({
     setMembersLoading(false)
   }
 
-  async function regenerateSchema() {
-    const res = await fetch('/api/admin/regenerate-schedule', { method: 'POST' })
+  async function regenerateSchemaForTask() {
+    if (!selectedTaskId) return
+    setRegenerateLoading(true)
+
+    const res = await fetch('/api/admin/regenerate-schedule', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ taskId: selectedTaskId, effectiveFrom }),
+    })
+
     if (res.ok) {
-      showMessage('success', 'Schema opnieuw gegenereerd!')
+      showMessage('success', 'Schema voor deze taak opnieuw gegenereerd!')
     } else {
       showMessage('error', 'Fout bij genereren — probeer het opnieuw')
     }
+
+    setRegenerateLoading(false)
+  }
+
+  async function sendOneNotification(
+    userId: string,
+    title: string,
+    body: string
+  ): Promise<{ ok: boolean; count: number; error?: string }> {
+    try {
+      const res = await fetch('/api/push/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, title, body, url: '/schema' }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) return { ok: false, count: 0, error: data.error || `HTTP ${res.status}` }
+      return { ok: true, count: data.count ?? 0 }
+    } catch (err) {
+      return { ok: false, count: 0, error: err instanceof Error ? err.message : 'Netwerkfout' }
+    }
+  }
+
+  async function sendTestToUser(user: User) {
+    setTestingUserId(user.id)
+    const result = await sendOneNotification(
+      user.id,
+      'Tjokkellust Test 🏠',
+      `Hoi ${user.name}! Dit is een test. Zie je deze melding, dan werkt het.`
+    )
+    if (!result.ok) {
+      showMessage('error', `${user.name}: ${result.error}`)
+    } else if (result.count === 0) {
+      showMessage('error', `${user.name} heeft meldingen nog niet ingeschakeld.`)
+    } else {
+      showMessage('success', `Test verstuurd naar ${user.name} (${result.count} apparaat${result.count !== 1 ? 'en' : ''}).`)
+    }
+    setTestingUserId(null)
   }
 
   async function sendTestNotifications() {
     if (!confirm('Test notificatie naar alle huisgenoten sturen?')) return
     setPushLoading(true)
     try {
-      const promises = users.map(user => 
-        fetch('/api/push/send', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: user.id,
-            title: 'Tjokkellust Test 🏠',
-            body: 'Dit is een test notificatie. Als je dit ziet, werken de notificaties!',
-            url: '/schema'
-          })
-        })
+      const results = await Promise.all(
+        users.map((user) =>
+          sendOneNotification(
+            user.id,
+            'Tjokkellust Test 🏠',
+            'Dit is een test notificatie. Als je dit ziet, werken de notificaties!'
+          )
+        )
       )
-      await Promise.all(promises)
-      showMessage('success', `Test notificatie verstuurd naar ${users.length} huisgenoot${users.length !== 1 ? 'en' : ''}!`)
+      const delivered = results.filter((r) => r.ok && r.count > 0).length
+      const noSub = results.filter((r) => r.ok && r.count === 0).length
+      const failed = results.filter((r) => !r.ok).length
+      let text = `Verstuurd naar ${delivered} huisgeno${delivered !== 1 ? 'ten' : 'ot'}.`
+      if (noSub > 0) text += ` ${noSub} zonder meldingen aan.`
+      if (failed > 0) text += ` ${failed} mislukt.`
+      showMessage(failed > 0 ? 'error' : 'success', text)
     } catch (err) {
       showMessage('error', err instanceof Error ? err.message : 'Fout bij versturen')
     }
@@ -216,7 +270,6 @@ export default function AdminPanel({
     { key: 'users', label: 'Huisgenoten' },
     { key: 'tasks', label: 'Taken' },
     { key: 'members', label: 'Taakverdeling' },
-    { key: 'schema', label: 'Schema' },
     { key: 'push', label: 'Notificaties' },
   ] as const
 
@@ -384,6 +437,7 @@ export default function AdminPanel({
               <select
                 value={selectedTaskId}
                 onChange={(e) => setSelectedTaskId(e.target.value)}
+                aria-label="Selecteer taak"
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 <option value="">-- Kies een taak --</option>
@@ -467,25 +521,46 @@ export default function AdminPanel({
                       </button>
                     ))}
                 </div>
+
+                <div className="mt-5 border-t border-slate-200 pt-4">
+                  <h4 className="text-sm font-semibold text-slate-900 mb-1">
+                    Schema voor deze taak
+                  </h4>
+                  <p className="text-xs text-slate-500 mb-3">
+                    Past alleen deze taak aan vanaf het gekozen moment. Eerdere weken blijven ongewijzigd.
+                  </p>
+
+                  <div className="flex items-center gap-3 mb-3">
+                    <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+                      <input
+                        type="radio"
+                        name="effective-from"
+                        checked={effectiveFrom === 'this-week'}
+                        onChange={() => setEffectiveFrom('this-week')}
+                      />
+                      M.i.v. deze week
+                    </label>
+                    <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+                      <input
+                        type="radio"
+                        name="effective-from"
+                        checked={effectiveFrom === 'next-week'}
+                        onChange={() => setEffectiveFrom('next-week')}
+                      />
+                      M.i.v. volgende week
+                    </label>
+                  </div>
+
+                  <button
+                    onClick={regenerateSchemaForTask}
+                    disabled={regenerateLoading || membersLoading || getMembersForTask(selectedTaskId).length === 0}
+                    className="btn-primary"
+                  >
+                    {regenerateLoading ? 'Genereren...' : 'Schema genereren voor deze taak'}
+                  </button>
+                </div>
               </div>
             )}
-          </div>
-        )}
-
-        {/* Schema tab */}
-        {activeTab === 'schema' && (
-          <div className="card">
-            <h3 className="font-semibold text-sm text-slate-900 mb-2">
-              Schema opnieuw genereren
-            </h3>
-            <p className="text-xs text-slate-500 mb-4">
-              Genereer het schema voor de huidige week opnieuw op basis van de
-              huidige taakverdeling. Bestaande taken die al als &apos;klaar&apos; zijn
-              gemarkeerd blijven ongewijzigd.
-            </p>
-            <button onClick={regenerateSchema} className="btn-primary">
-              Schema genereren
-            </button>
           </div>
         )}
 
@@ -501,13 +576,52 @@ export default function AdminPanel({
                 push notificaties werken. Huisgenoten moeten eerst toestemming hebben
                 gegeven voor notificaties.
               </p>
-              <button 
-                onClick={sendTestNotifications} 
+              <button
+                onClick={sendTestNotifications}
                 disabled={pushLoading || users.length === 0}
                 className="btn-primary"
               >
                 {pushLoading ? 'Versturen...' : `Test notificatie naar ${users.length} huisgenoot${users.length !== 1 ? 'en' : ''}`}
               </button>
+            </div>
+
+            {/* Per-housemate test buttons */}
+            <div className="card">
+              <h3 className="font-semibold text-sm text-slate-900 mb-1">
+                Individuele test
+              </h3>
+              <p className="text-xs text-slate-500 mb-3">
+                Stuur een test naar één huisgenoot. Een groene stip betekent dat
+                diegene meldingen heeft ingeschakeld.
+              </p>
+              <div className="space-y-1.5">
+                {users.map((user) => {
+                  const hasSub = subscribedSet.has(user.id)
+                  return (
+                    <div
+                      key={user.id}
+                      className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2"
+                    >
+                      <span
+                        className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+                          hasSub ? 'bg-green-500' : 'bg-slate-300'
+                        }`}
+                        title={hasSub ? 'Meldingen aan' : 'Meldingen uit'}
+                      />
+                      <span className="flex-1 text-sm font-medium text-slate-800 truncate">
+                        {user.name}
+                      </span>
+                      <button
+                        onClick={() => sendTestToUser(user)}
+                        disabled={testingUserId === user.id || !hasSub}
+                        className="text-xs font-semibold text-secondary-700 border border-secondary-200 rounded-full px-3 py-1 hover:bg-secondary-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        {testingUserId === user.id ? '...' : 'Test'}
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
 
             <div className="card bg-blue-50 border-blue-200">

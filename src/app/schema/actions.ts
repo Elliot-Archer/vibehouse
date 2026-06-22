@@ -68,13 +68,18 @@ export async function requestSwapAction(entryId: string, targetUserId: string) {
   if (error) return { error: error.message }
 
   // Notify the target that someone wants to swap with them.
-  const service = createSupabaseServiceClient()
-  const { data: requester } = await service.from('users').select('name').eq('id', profileId).single()
-  await sendPushToUser(service, targetUserId, {
-    title: '🔄 Ruilverzoek ontvangen',
-    body: `${requester?.name ?? 'Iemand'} wil een taak met je ruilen`,
-    url: '/schema',
-  })
+  // A push failure must never break the swap itself.
+  try {
+    const service = createSupabaseServiceClient()
+    const { data: requester } = await service.from('users').select('name').eq('id', profileId).single()
+    await sendPushToUser(service, targetUserId, {
+      title: '🔄 Ruilverzoek ontvangen',
+      body: `${requester?.name ?? 'Iemand'} wil een taak met je ruilen`,
+      url: '/schema',
+    })
+  } catch (e) {
+    console.error('Push (requestSwap) failed:', e)
+  }
 
   revalidatePath('/schema')
   revalidatePath('/ruilverzoeken')
@@ -127,15 +132,20 @@ export async function respondSwapAction(swapId: string, accept: boolean) {
   if (error) return { error: error.message }
 
   // Notify the original requester of the response.
-  const { data: responder } = await service.from('users').select('name').eq('id', profileId).single()
-  if (swap.requester_id) {
-    await sendPushToUser(service, swap.requester_id, {
-      title: accept ? '✅ Ruilverzoek geaccepteerd' : '❌ Ruilverzoek afgewezen',
-      body: accept
-        ? `${responder?.name ?? 'Iemand'} heeft je ruilverzoek geaccepteerd!`
-        : `${responder?.name ?? 'Iemand'} heeft je ruilverzoek afgewezen.`,
-      url: '/schema',
-    })
+  // A push failure must never break the response itself.
+  try {
+    const { data: responder } = await service.from('users').select('name').eq('id', profileId).single()
+    if (swap.requester_id) {
+      await sendPushToUser(service, swap.requester_id, {
+        title: accept ? '✅ Ruilverzoek geaccepteerd' : '❌ Ruilverzoek afgewezen',
+        body: accept
+          ? `${responder?.name ?? 'Iemand'} heeft je ruilverzoek geaccepteerd!`
+          : `${responder?.name ?? 'Iemand'} heeft je ruilverzoek afgewezen.`,
+        url: '/schema',
+      })
+    }
+  } catch (e) {
+    console.error('Push (respondSwap) failed:', e)
   }
 
   revalidatePath('/schema')

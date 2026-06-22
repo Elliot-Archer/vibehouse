@@ -1,38 +1,52 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
 
-// Hardcoded cookie name for this Supabase project
-const COOKIE_NAME = 'sb-oqmhcbfxewpytmgmokhr-auth-token'
+const protectedRoutes = ['/schema', '/ruilverzoeken', '/admin', '/strepen', '/meldingen', '/wachtwoord']
 
-function hasValidSession(request: NextRequest): boolean {
-  const raw = request.cookies.get(COOKIE_NAME)?.value
-  if (!raw) return false
+export async function middleware(request: NextRequest) {
+  // Start from a pass-through response we can attach refreshed cookies to.
+  let response = NextResponse.next({ request })
 
-  try {
-    const json = raw.startsWith('base64-')
-      ? atob(raw.slice(7))
-      : decodeURIComponent(raw)
-    const session = JSON.parse(json)
-    return typeof session.expires_at === 'number' && session.expires_at > Date.now() / 1000
-  } catch {
-    return false
-  }
-}
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => request.cookies.getAll(),
+        setAll: (
+          cookiesToSet: { name: string; value: string; options?: object }[]
+        ) => {
+          // Mirror refreshed cookies onto both the request (so downstream
+          // server components read the new token) and the outgoing response
+          // (so the browser persists it).
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          response = NextResponse.next({ request })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(
+              name,
+              value,
+              options as Parameters<typeof response.cookies.set>[2]
+            )
+          )
+        },
+      },
+    }
+  )
 
-export function middleware(request: NextRequest) {
+  // getUser() refreshes the access token from the refresh token when expired,
+  // which triggers setAll above and keeps the session alive across visits.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
   const { pathname } = request.nextUrl
-  const protectedRoutes = ['/schema', '/ruilverzoeken', '/admin']
   const isProtected = protectedRoutes.some((route) => pathname.startsWith(route))
-  const loggedIn = hasValidSession(request)
 
-  const response = loggedIn || !isProtected
-    ? NextResponse.next()
-    : NextResponse.redirect(new URL('/login', request.url))
+  if (!user && isProtected) {
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
 
-  response.headers.set('x-middleware-ran', '1')
-  response.headers.set('x-logged-in', String(loggedIn))
-  response.headers.set('x-cookie-found', String(!!request.cookies.get(COOKIE_NAME)))
-
-  if (loggedIn && pathname === '/login') {
+  if (user && pathname === '/login') {
     return NextResponse.redirect(new URL('/schema', request.url))
   }
 

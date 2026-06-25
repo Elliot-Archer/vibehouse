@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createSupabaseServiceClient } from '@/lib/supabase-server'
 import { isAdminRequest } from '@/lib/auth'
+import { getSessionUser } from '@/lib/session'
 import { sendPushToUser } from '@/lib/push'
 import { createNotifications } from '@/lib/notifications'
 
@@ -51,21 +52,44 @@ export async function POST(request: NextRequest) {
   // Notify the user when they receive a streep, and record it in their feed.
   // A push/notification failure must never break the streep update itself.
   if (delta > 0) {
-    const strepenLabel = `${newStrepen} stre${newStrepen === 1 ? 'ep' : 'pen'}`
     try {
-      await createNotifications(serviceClient, [
-        {
-          userId,
-          direction: 'incoming',
-          type: 'streep',
-          actorId: null,
-          body: `Je hebt een streep gekregen — je staat nu op ${strepenLabel}`,
+      const session = await getSessionUser()
+      let distributorId: string | null = null
+      let distributorName = 'Een huisgenoot'
+
+      if (session?.email) {
+        const { data: distributor } = await serviceClient
+          .from('users')
+          .select('id, name')
+          .eq('email', session.email)
+          .single()
+
+        if (distributor?.id) distributorId = distributor.id
+        if (distributor?.name) distributorName = distributor.name
+      }
+
+      const { data: allUsers } = await serviceClient
+        .from('users')
+        .select('id')
+
+      const recipientBody = `${distributorName} heeft je een streep gegeven. Je staat nu op ${newStrepen}`
+      const othersBody = `${distributorName} heeft ${user.name} een streep gegeven. ${user.name} staat nu op ${newStrepen}`
+
+      await createNotifications(
+        serviceClient,
+        (allUsers || []).map((u: { id: string }) => ({
+          userId: u.id,
+          direction: 'incoming' as const,
+          type: 'streep' as const,
+          actorId: distributorId,
+          body: u.id === userId ? recipientBody : othersBody,
           url: '/strepen',
-        },
-      ])
+        }))
+      )
+
       await sendPushToUser(serviceClient, userId, {
         title: '➖ Je hebt een streep gekregen',
-        body: `Je staat nu op ${strepenLabel}.`,
+        body: recipientBody,
         url: '/strepen',
       })
     } catch (e) {

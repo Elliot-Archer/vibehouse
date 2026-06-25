@@ -7,6 +7,9 @@ export default async function ProfielPage() {
   const session = await getSessionUser()
   if (!session) redirect('/login')
 
+  const adminIds = (process.env.ADMIN_USER_IDS ?? '').split(',').filter(Boolean)
+  const isAdmin = adminIds.includes(session.id)
+
   const supabase = await createSupabaseServerClient()
   const { data: profile } = await supabase
     .from('users')
@@ -29,6 +32,7 @@ export default async function ProfielPage() {
       <ProfileClient
         initialName={profile?.name ?? ''}
         initialAvatarUrl={profile?.avatar_url ?? null}
+        isAdmin={isAdmin}
       />
     </div>
   )

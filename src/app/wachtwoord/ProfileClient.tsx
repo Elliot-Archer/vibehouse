@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { updateProfileAction, updatePasswordAction } from './actions'
 import { LogoutButton } from '../LogoutButton'
 
@@ -39,11 +40,13 @@ function fileToResizedDataUrl(file: File, size = 256): Promise<string> {
 interface ProfileClientProps {
   initialName: string
   initialAvatarUrl: string | null
+  isAdmin: boolean
 }
 
 export default function ProfileClient({
   initialName,
   initialAvatarUrl,
+  isAdmin,
 }: ProfileClientProps) {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -372,6 +375,19 @@ export default function ProfileClient({
           </form>
         )}
       </div>
+
+      {isAdmin && (
+        <div className="card">
+          <h2 className="font-semibold text-slate-900 mb-1">Beheer</h2>
+          <p className="text-xs text-slate-500 mb-3">Admin functies en instellingen.</p>
+          <Link
+            href="/admin"
+            className="w-full inline-flex items-center justify-center bg-secondary-800 text-white rounded-lg py-2.5 text-sm font-bold hover:bg-secondary-700 transition-colors"
+          >
+            Naar beheerpagina
+          </Link>
+        </div>
+      )}
 
       <div className="pt-2">
         <LogoutButton variant="profile" />

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import Link from 'next/link'
 import './globals.css'
 import { getSessionUser } from '@/lib/session'
+import InstallBanner from './InstallBanner'
 
 export const metadata: Metadata = {
   title: 'Tjokkellust',
@@ -47,6 +48,7 @@ export default async function RootLayout({
       <body className="bg-slate-50 min-h-screen">
         <div className="max-w-md mx-auto bg-white min-h-screen flex flex-col">
           <main className="flex-1 pb-20">{children}</main>
+          <InstallBanner />
 
           {user && (
             <>

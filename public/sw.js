@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tjokkellust-v1'
+const CACHE_NAME = 'tjokkellust-v2'
 const APP_SHELL = ['/', '/schema', '/manifest.json']
 
 self.addEventListener('install', (event) => {

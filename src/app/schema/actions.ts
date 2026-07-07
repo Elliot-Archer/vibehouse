@@ -181,7 +181,7 @@ export async function pokeAction(entryId: string) {
     ])
 
     await sendPushToUser(service, entry.user_id, {
-      title: '👉 Herinnering',
+      title: 'POETSEN FEUT!',
       body: `${senderName} herinnert je aan je taak: ${taskName}`,
       url: '/schema',
     })

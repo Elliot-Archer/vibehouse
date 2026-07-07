@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
 
       return sendPushToUser(serviceSupabase, entry.user_id, {
         title: 'Tjokkellust',
-        body: `Vergeet je taak niet: ${task.name}`,
+        body: `Poetstaak deze week: ${task.name}`,
         url: '/schema',
       })
     })

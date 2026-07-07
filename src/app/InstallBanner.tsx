@@ -12,7 +12,7 @@ export default function InstallBanner() {
       (navigator as Navigator & { standalone?: boolean }).standalone === true
 
     if (isStandalone) return
-    if (sessionStorage.getItem('install-banner-dismissed')) return
+    if (localStorage.getItem('install-banner-dismissed')) return
 
     const ua = navigator.userAgent
     const onIos = /iPhone|iPad|iPod/.test(ua)
@@ -27,7 +27,7 @@ export default function InstallBanner() {
   if (!show) return null
 
   const dismiss = () => {
-    sessionStorage.setItem('install-banner-dismissed', '1')
+    localStorage.setItem('install-banner-dismissed', '1')
     setShow(false)
   }
 

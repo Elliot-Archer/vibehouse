@@ -406,6 +406,11 @@ export default async function SchemaPage({ searchParams }: PageProps) {
                     <p className="mt-1.5 text-sm text-slate-500">
                       {wt.isMe ? 'Jij' : wt.assignedUser.name}
                     </p>
+                    {wt.assignedUser.huistaak && (
+                      <span className="mt-1 inline-block text-xs text-slate-400 bg-slate-100 rounded px-1.5 py-0.5">
+                        {wt.assignedUser.huistaak}
+                      </span>
+                    )}
 
                     {/* Incoming swap request */}
                     {wt.incomingSwap && (

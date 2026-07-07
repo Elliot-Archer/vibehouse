@@ -4,6 +4,7 @@ export interface User {
   email: string
   avatar_url?: string | null
   strepen?: number
+  huistaak?: string | null
 }
 
 export interface Task {

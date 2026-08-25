@@ -18,4 +18,4 @@ UPDATE public.users SET huistaak = 'Huisbs & biertaak' WHERE lower(email) = 'ver
 UPDATE public.users SET huistaak = 'Timmerclub'        WHERE lower(email) = 'mail@emilebol.nl';             -- Emile
 UPDATE public.users SET huistaak = 'Huisbs & biertaak' WHERE lower(email) = 'bastiaanprins@outlook.com';    -- Bastiaan
 UPDATE public.users SET huistaak = 'Vuilnis'           WHERE lower(email) = 'annetje.schoop@gmail.com';     -- Annetje
-UPDATE public.users SET huistaak = 'Vuilnis'           WHERE lower(email) = 'eva.ten.hoor@outlook.com';     -- Eva
+UPDATE public.users SET huistaak = 'Vuilnis'           WHERE lower(email) = 'ymke.hamoen@gmail.com';        -- Ymke (nam Eva's plek over)

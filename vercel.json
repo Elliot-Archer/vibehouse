@@ -9,8 +9,8 @@
       "schedule": "0 7 * * 1"
     },
     {
-      "path": "/api/cron/waste-evening-reminder",
-      "schedule": "0 18 * * *"
+      "path": "/api/cron/waste-reminder",
+      "schedule": "0 * * * *"
     }
   ]
 }

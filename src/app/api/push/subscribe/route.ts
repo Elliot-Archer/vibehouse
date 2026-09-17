@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
   const { data: profile } = await supabase
     .from('users')
     .select('id')
-    .eq('email', authUser.email)
+    .eq('email', (authUser.email ?? '').trim().toLowerCase())
     .single()
 
   if (!profile) {

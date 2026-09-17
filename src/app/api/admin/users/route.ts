@@ -20,7 +20,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Geen toegang' }, { status: 403 })
   }
 
-  const { name, email, password } = await request.json()
+  const body = await request.json()
+  const name = String(body.name ?? '').trim()
+  // Store emails lowercase: profiles are looked up by exact email match.
+  const email = String(body.email ?? '').trim().toLowerCase()
+  const password = body.password
 
   if (!name || !email || !password) {
     return NextResponse.json({ error: 'Alle velden zijn verplicht' }, { status: 400 })
@@ -70,6 +74,12 @@ export async function DELETE(request: NextRequest) {
 
   const serviceClient = createSupabaseServiceClient()
 
+  const { data: profile } = await serviceClient
+    .from('users')
+    .select('email')
+    .eq('id', id)
+    .single()
+
   const { error: profileError } = await serviceClient
     .from('users')
     .delete()
@@ -79,8 +89,24 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: profileError.message }, { status: 500 })
   }
 
-  // Delete auth user
-  await serviceClient.auth.admin.deleteUser(id)
+  // Delete the login too. Older profiles have a users.id that differs from
+  // their auth id, so find the auth account by email instead of by id —
+  // otherwise the login silently survives without a profile.
+  if (profile?.email) {
+    const { data: authList } = await serviceClient.auth.admin.listUsers({ perPage: 1000 })
+    const authUser = authList?.users.find(
+      (u) => u.email?.toLowerCase() === profile.email.toLowerCase()
+    )
+    if (authUser) {
+      const { error: authError } = await serviceClient.auth.admin.deleteUser(authUser.id)
+      if (authError) {
+        return NextResponse.json(
+          { error: `Profiel verwijderd, maar login niet: ${authError.message}` },
+          { status: 500 }
+        )
+      }
+    }
+  }
 
   return NextResponse.json({ ok: true })
 }

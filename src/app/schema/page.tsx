@@ -3,7 +3,13 @@ import Link from 'next/link'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { getSessionUser } from '@/lib/session'
 import { getCurrentMonday, formatWeekDate, getMonday } from '@/lib/schedule'
-import { upsertWeekSchedule, ensureWasteEntry, WASTE_TASK_NAME } from '@/lib/schedule'
+import {
+  upsertWeekSchedule,
+  ensureWasteEntry,
+  getWasteDefaultUserId,
+  WASTE_TASK_NAME,
+  WASTE_OWNER_HUISTAAK,
+} from '@/lib/schedule'
 import { createSupabaseServiceClient } from '@/lib/supabase-server'
 import type { Task, User, ScheduleEntry, SwapRequest } from '@/types'
 import MarkDoneButton from './MarkDoneButton'
@@ -44,17 +50,15 @@ export default async function SchemaPage({ searchParams }: PageProps) {
   const weekStr = formatWeekDate(monday)
   const currentMonday = getCurrentMonday()
 
-  // Ensure a waste responsibility entry exists (defaults to Elliot) for any
-  // current/future week that has a pickup, so it shows up swappable below.
-  const elliotUserId = process.env.ELLIOT_USER_ID
+  // Ensure a waste responsibility entry exists (defaults to whoever has the
+  // "Bakken" huistaak) for any current/future week that has a pickup, so it
+  // shows up swappable below.
   const weekWastePickups = getWastePickupsInWeek(monday)
-  if (
-    elliotUserId &&
-    weekWastePickups.length > 0 &&
-    monday.getTime() >= currentMonday.getTime()
-  ) {
+  if (weekWastePickups.length > 0 && monday.getTime() >= currentMonday.getTime()) {
     try {
-      await ensureWasteEntry(createSupabaseServiceClient(), monday, elliotUserId)
+      const service = createSupabaseServiceClient()
+      const wasteOwnerId = await getWasteDefaultUserId(service)
+      if (wasteOwnerId) await ensureWasteEntry(service, monday, wasteOwnerId)
     } catch (_) {
       // Non-fatal: the card still renders as info even without an entry.
     }
@@ -159,15 +163,15 @@ export default async function SchemaPage({ searchParams }: PageProps) {
   )
 
   // Build the waste responsibility item from its schedule entry (if any),
-  // falling back to Elliot for display when no entry exists yet.
+  // falling back to whoever has the "Bakken" huistaak when no entry exists yet.
   const wasteEntry = (entries || []).find(
     (e: ScheduleEntry) => e.task_id === wasteTaskId
   )
   const wasteUser = wasteEntry
     ? userMap.get(wasteEntry.user_id)
-    : elliotUserId
-      ? userMap.get(elliotUserId)
-      : undefined
+    : (users || []).find((u: User) =>
+        (u.huistaak ?? '').toLowerCase().includes(WASTE_OWNER_HUISTAAK)
+      )
   const wasteIsMe = !!wasteEntry && wasteEntry.user_id === profile.id
   const wasteIncomingSwap = wasteEntry
     ? (swapRequests || []).find(

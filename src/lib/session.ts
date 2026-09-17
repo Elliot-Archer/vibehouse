@@ -72,7 +72,9 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 
     const user = session.user
     if (!user?.email) return null
-    return { id: user.id, email: user.email }
+    // Profiles are stored with lowercase emails; normalize so a capital letter
+    // in someone's address can never lock them out of their profile.
+    return { id: user.id, email: String(user.email).trim().toLowerCase() }
   } catch {
     return null
   }

@@ -84,9 +84,24 @@ export async function upsertWeekSchedule(
   if (upsertError) throw upsertError
 }
 
-// The waste task is not part of the rotation; it defaults to one person
-// (Elliot) each week but can be swapped like any other task.
+// The waste task is not part of the rotation; it defaults each week to whoever
+// has the "Bakken" huistaak, but can be swapped like any other task.
 export const WASTE_TASK_NAME = 'Vuilnis'
+export const WASTE_OWNER_HUISTAAK = 'bakken'
+
+// The person responsible for putting the containers out by default: the user
+// whose huistaak mentions "Bakken". Falls back to ELLIOT_USER_ID if nobody does.
+export async function getWasteDefaultUserId(
+  supabaseClient: SupabaseClient
+): Promise<string | null> {
+  const { data } = await supabaseClient
+    .from('users')
+    .select('id')
+    .ilike('huistaak', `%${WASTE_OWNER_HUISTAAK}%`)
+    .order('name')
+    .limit(1)
+  return data?.[0]?.id ?? process.env.ELLIOT_USER_ID ?? null
+}
 
 // Look up the waste task id by name.
 export async function getWasteTaskId(

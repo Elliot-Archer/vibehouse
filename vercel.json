@@ -9,7 +9,7 @@
       "schedule": "0 7 * * 1"
     },
     {
-      "path": "/api/cron/waste-reminder",
+      "path": "/api/cron/reminders",
       "schedule": "0 * * * *"
     }
   ]

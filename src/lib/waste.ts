@@ -125,6 +125,11 @@ export function getWastePickupsInWeek(monday: Date): WastePickup[] {
   )
 }
 
+export function getTodayWastePickups(now: Date): WastePickup[] {
+  const today = formatDateInAmsterdam(now)
+  return WASTE_PICKUPS_2026.filter((p) => p.datum === today)
+}
+
 export function getTomorrowWastePickups(now: Date): WastePickup[] {
   const today = formatDateInAmsterdam(now)
   const tomorrow = addDays(today, 1)

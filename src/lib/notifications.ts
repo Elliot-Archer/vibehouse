@@ -9,6 +9,7 @@ export type NotificationType =
   | 'streep'
   | 'weekly_reminder'
   | 'waste_reminder'
+  | 'schedule_shift'
 
 export type NotificationDirection = 'incoming' | 'outgoing'
 

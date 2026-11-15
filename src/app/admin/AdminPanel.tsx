@@ -43,6 +43,11 @@ export default function AdminPanel({
   const [regenerateLoading, setRegenerateLoading] = useState(false)
   const [effectiveFrom, setEffectiveFrom] = useState<'this-week' | 'next-week'>('this-week')
 
+  // Shift schedule one week earlier/later
+  const [shiftScope, setShiftScope] = useState<string>('all')
+  const [shiftFrom, setShiftFrom] = useState<'this-week' | 'next-week'>('this-week')
+  const [shiftLoading, setShiftLoading] = useState<'earlier' | 'later' | null>(null)
+
   // Delete loading guards
   const [removingUserId, setRemovingUserId] = useState<string | null>(null)
   const [removingTaskId, setRemovingTaskId] = useState<string | null>(null)
@@ -202,6 +207,43 @@ export default function AdminPanel({
     }
 
     setRegenerateLoading(false)
+  }
+
+  async function shiftSchedule(direction: 'earlier' | 'later') {
+    const scopeLabel =
+      shiftScope === 'all'
+        ? 'alle taken'
+        : `"${tasks.find((t) => t.id === shiftScope)?.name ?? 'deze taak'}"`
+    const dirLabel = direction === 'later' ? 'een week naar achter' : 'een week naar voren'
+    const fromLabel = shiftFrom === 'this-week' ? 'deze week' : 'volgende week'
+    if (!confirm(`Weet je zeker dat je ${scopeLabel} ${dirLabel} wilt schuiven (vanaf ${fromLabel})? Iedereen met een nieuwe taak krijgt een melding.`)) {
+      return
+    }
+
+    setShiftLoading(direction)
+    try {
+      const res = await fetch('/api/admin/shift-schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          taskId: shiftScope === 'all' ? null : shiftScope,
+          direction,
+          effectiveFrom: shiftFrom,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        showMessage(
+          'success',
+          `Schema ${dirLabel} geschoven — ${data.notified ?? 0} ${data.notified === 1 ? 'huisgenoot' : 'huisgenoten'} op de hoogte gebracht`
+        )
+      } else {
+        showMessage('error', 'Fout bij verschuiven — probeer het opnieuw')
+      }
+    } catch {
+      showMessage('error', 'Fout bij verschuiven — probeer het opnieuw')
+    }
+    setShiftLoading(null)
   }
 
   async function sendOneNotification(
@@ -430,6 +472,69 @@ export default function AdminPanel({
         {/* Task members tab */}
         {activeTab === 'members' && (
           <div className="space-y-4">
+            <div className="card">
+              <h3 className="font-semibold text-sm text-slate-900 mb-1">
+                Rooster verschuiven
+              </h3>
+              <p className="text-xs text-slate-500 mb-3">
+                Schuif het rooster een week op. Naar achter: iedereen doet zijn taak een week later.
+                Naar voren: een week eerder. Afgevinkte taken blijven staan. Wie daardoor een andere
+                taak krijgt, krijgt een melding.
+              </p>
+
+              <select
+                value={shiftScope}
+                onChange={(e) => setShiftScope(e.target.value)}
+                aria-label="Welke taken verschuiven"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="all">Alle taken</option>
+                {tasks.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+
+              <div className="flex items-center gap-3 mb-3">
+                <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="radio"
+                    name="shift-from"
+                    checked={shiftFrom === 'this-week'}
+                    onChange={() => setShiftFrom('this-week')}
+                  />
+                  Vanaf deze week
+                </label>
+                <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="radio"
+                    name="shift-from"
+                    checked={shiftFrom === 'next-week'}
+                    onChange={() => setShiftFrom('next-week')}
+                  />
+                  Vanaf volgende week
+                </label>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => shiftSchedule('earlier')}
+                  disabled={shiftLoading !== null}
+                  className="btn-primary flex-1"
+                >
+                  {shiftLoading === 'earlier' ? 'Bezig...' : '← Week naar voren'}
+                </button>
+                <button
+                  onClick={() => shiftSchedule('later')}
+                  disabled={shiftLoading !== null}
+                  className="btn-primary flex-1"
+                >
+                  {shiftLoading === 'later' ? 'Bezig...' : 'Week naar achter →'}
+                </button>
+              </div>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
                 Selecteer taak

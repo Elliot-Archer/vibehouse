@@ -16,6 +16,7 @@ const TYPE_ICON: Record<NotificationType, string> = {
   streep: '➖',
   weekly_reminder: '🔔',
   waste_reminder: '🗑️',
+  schedule_shift: '📅',
 }
 
 export default async function MeldingenPage() {

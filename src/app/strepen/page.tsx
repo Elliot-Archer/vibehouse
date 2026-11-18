@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { createSupabaseServerClient, createSupabaseServiceClient } from '@/lib/supabase-server'
+import type { StreepLogEntry } from '@/lib/strepen'
 import { getSessionUser } from '@/lib/session'
 import type { User } from '@/types'
 import StrepenClient from './StrepenClient'
@@ -41,6 +42,17 @@ export default async function StrepenPage() {
     }))
   }
 
+  // Strepen log. Read via the service role (the table has no public RLS
+  // policies). If the table doesn't exist yet, logAvailable stays false and
+  // the page falls back to just the counters.
+  const { data: logRows, error: logError } = await createSupabaseServiceClient()
+    .from('streep_log')
+    .select('id, user_id, giver_id, reason, created_at, undone_at, undone_by')
+    .order('created_at', { ascending: false })
+    .limit(100)
+
+  if (logError) console.error('streep_log read failed:', logError.message)
+
   return (
     <div className="flex flex-col min-h-full">
       <header className="bg-gradient-to-r from-secondary-900 to-secondary-800 px-4 pt-12 pb-6 shadow-lg">
@@ -64,6 +76,8 @@ export default async function StrepenPage() {
       <StrepenClient
         users={(userList || []) as User[]}
         isAdmin={isAdmin}
+        log={(logRows || []) as StreepLogEntry[]}
+        logAvailable={!logError}
       />
     </div>
   )

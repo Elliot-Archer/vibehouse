@@ -7,6 +7,7 @@ export type NotificationType =
   | 'swap_declined'
   | 'poke'
   | 'streep'
+  | 'streep_undo'
   | 'weekly_reminder'
   | 'waste_reminder'
   | 'schedule_shift'

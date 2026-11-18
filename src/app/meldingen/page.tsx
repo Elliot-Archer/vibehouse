@@ -14,6 +14,7 @@ const TYPE_ICON: Record<NotificationType, string> = {
   swap_declined: '❌',
   poke: '👉',
   streep: '➖',
+  streep_undo: '↩️',
   weekly_reminder: '🔔',
   waste_reminder: '🗑️',
   schedule_shift: '📅',

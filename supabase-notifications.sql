@@ -15,7 +15,7 @@ create table if not exists public.notifications (
   -- 'incoming' (user received it) or 'outgoing' (user caused it)
   direction text not null check (direction in ('incoming', 'outgoing')),
   -- event kind, drives the icon: swap_request, swap_accepted, swap_declined,
-  -- poke, streep, weekly_reminder, waste_reminder, schedule_shift
+  -- poke, streep, streep_undo, weekly_reminder, waste_reminder, schedule_shift
   type text not null,
   -- the other person involved (sender for incoming, recipient for outgoing);
   -- null for system notifications (weekly reminder, waste, streep)

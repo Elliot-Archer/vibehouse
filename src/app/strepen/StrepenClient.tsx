@@ -272,7 +272,7 @@ export default function StrepenClient({
 
       {target && (
         <div
-          className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4"
+          className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4"
           onClick={closeDialog}
         >
           <form
